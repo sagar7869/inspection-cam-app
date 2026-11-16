@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Field Inspection Cam</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#111827" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- IndexedDB Library (Zero Data Loss on Refresh) -->
+  <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+  <!-- FFmpeg.wasm (Video + Photo Merge & Quality Export) -->
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex flex-col justify-between select-none">
+
+  <!-- Top Header -->
+  <header class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
+    <h1 class="font-bold text-lg tracking-wide text-blue-400">InspectCam Pro</h1>
+    <button onclick="clearAllClips()" class="text-xs bg-red-900/50 text-red-300 px-3 py-1.5 rounded-lg border border-red-800">
+      Clear All
+    </button>
+  </header>
+
+  <!-- Main Back Camera View -->
+  <main class="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
+    <video id="cameraPreview" autoplay playsinline muted class="w-full h-full object-cover"></video>
+    
+    <!-- Recording Indicator -->
+    <div id="recBadge" class="hidden absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse">
+      ● REC
+    </div>
+
+    <!-- Camera Controls -->
+    <div class="absolute bottom-5 inset-x-0 flex justify-center items-center gap-5 px-4">
+      <button id="photoBtn" onclick="takePhoto()" class="bg-white text-gray-900 font-bold px-5 py-3.5 rounded-full shadow-lg active:scale-95 transition">
+        📸 Photo
+      </button>
+      <button id="recordBtn" onclick="toggleVideo()" class="bg-blue-600 text-white font-bold px-7 py-3.5 rounded-full shadow-lg active:scale-95 transition">
+        🎥 Start Video
+      </button>
+    </div>
+  </main>
+
+  <!-- Bottom Thumbnail Strip & Export Bar -->
+  <footer class="bg-gray-900 border-t border-gray-800 p-3 space-y-3">
+    <!-- Thumbnails Queue -->
+    <div id="thumbnailList" class="flex gap-2.5 overflow-x-auto pb-1 min-h-[76px] items-center">
+      <p class="text-gray-500 text-xs mx-auto">No clips or photos captured yet.</p>
+    </div>
+
+    <!-- Export Controls -->
+    <div class="flex gap-2 items-center">
+      <select id="qualitySelect" class="bg-gray-800 text-sm text-white px-3 py-2.5 rounded-lg border border-gray-700 outline-none">
+        <option value="original">Original Quality (1080p)</option>
+        <option value="720p" selected>Medium (720p)</option>
+        <option value="480p">Compressed (480p)</option>
+      </select>
+      <button id="exportBtn" onclick="exportFinalVideo()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-lg shadow transition">
+        Export Final Video
+      </button>
+    </div>
+    <p id="statusText" class="text-xs text-center text-amber-400 hidden"></p>
+  </footer>
+
+  <script>
+    // 1. Setup IndexedDB (Data survives page refresh)
+    const db = new Dexie("InspectionCamDB");
+    db.version(1).stores({ clips: "++id, type, createdAt" });
+
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    // 2. Start Main Back Camera
+    async function initCamera() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: true
+        });
+        document.getElementById("cameraPreview").srcObject = mediaStream;
+      } catch (err) {
+        alert("Camera error: Please allow camera permission and use HTTPS.");
+      }
+    }
+
+    // 3. Capture Instant Photo & Save to IndexedDB
+    async function takePhoto() {
+      const video = document.getElementById("cameraPreview");
+      if (!video.videoWidth) return;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+
+      const thumbUrl = canvas.toDataURL("image/jpeg", 0.5);
+      canvas.toBlob(async (blob) => {
+        await db.clips.add({ type: "photo", blob, thumbUrl, createdAt: Date.now() });
+        renderThumbnails();
+      }, "image/jpeg", 0.95);
+    }
+
+    // 4. Record Video Clip & Save to IndexedDB on Stop
+    function toggleVideo() {
+      const btn = document.getElementById("recordBtn");
+      const badge = document.getElementById("recBadge");
+      const photoBtn = document.getElementById("photoBtn");
+
+      if (!isRecording) {
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType: "video/webm" });
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        
+        mediaRecorder.onstop = async () => {
+          const videoBlob = new Blob(recordedChunks, { type: "video/webm" });
+          const thumbUrl = getVideoThumbnail();
+          await db.clips.add({ type: "video", blob: videoBlob, thumbUrl, createdAt: Date.now() });
+          renderThumbnails();
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        btn.textContent = "⏹ Submit Clip";
+        btn.classList.replace("bg-blue-600", "bg-red-600");
+        badge.classList.remove("hidden");
+        photoBtn.disabled = true;
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.textContent = "🎥 Start Video";
+        btn.classList.replace("bg-red-600", "bg-blue-600");
+        badge.classList.add("hidden");
+        photoBtn.disabled = false;
+      }
+    }
+
+    function getVideoThumbnail() {
+      const video = document.getElementById("cameraPreview");
+      const canvas = document.createElement("canvas");
+      canvas.width = 240;
+      canvas.height = 135;
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.6);
+    }
+
+    // 5. Render Thumbnails from IndexedDB
+    async function renderThumbnails() {
+      const clips = await db.clips.toArray();
+      const container = document.getElementById("thumbnailList");
+      if (clips.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-xs mx-auto">No clips or photos captured yet.</p>`;
+        return;
+      }
+
+      container.innerHTML = clips.map((clip, index) => `
+        <div class="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden border border-gray-700 bg-black">
+          <img src="${clip.thumbUrl}" class="w-full h-full object-cover" />
+          <span class="absolute bottom-0.5 left-1 text-[10px] bg-black/70 px-1 rounded">
+            ${clip.type === 'video' ? '🎥' : '📸'} #${index + 1}
+          </span>
+          <button onclick="deleteClip(${clip.id})" class="absolute top-0.5 right-0.5 bg-red-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">×</button>
+        </div>
+      `).join("");
+    }
+
+    async function deleteClip(id) {
+      await db.clips.delete(id);
+      renderThumbnails();
+    }
+
+    async function clearAllClips() {
+      if (confirm("Delete all captured clips and photos?")) {
+        await db.clips.clear();
+        renderThumbnails();
+      }
+    }
+
+    // 6. Export Final Merged Video (Videos + Photos)
+    async function exportFinalVideo() {
+      const clips = await db.clips.toArray();
+      if (clips.length === 0) return alert("Pehle kam se kam 1 video ya photo capture karein!");
+
+      const status = document.getElementById("statusText");
+      const exportBtn = document.getElementById("exportBtn");
+      const quality = document.getElementById("qualitySelect").value;
+
+      status.classList.remove("hidden");
+      exportBtn.disabled = true;
+      status.textContent = "Loading video engine (first time takes ~10 sec)...";
+
+      try {
+        const { FFmpeg } = FFmpegWASM;
+        const { fetchFile, toBlobURL } = FFmpegUtil;
+        const ffmpeg = new FFmpeg();
+
+        ffmpeg.on("progress", ({ progress }) => {
+          status.textContent = `Processing video: ${Math.min(100, Math.round(progress * 100))}%`;
+        });
+
+        const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+        });
+
+        const scale = quality === "original"
+          ? "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+          : quality === "720p"
+          ? "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2"
+          : "scale=854:480:force_original_aspect_ratio=decrease,pad=854:480:(ow-iw)/2:(oh-ih)/2";
+
+        const crf = quality === "original" ? "18" : quality === "720p" ? "23" : "28";
+        let listContent = "";
+
+        for (let i = 0; i < clips.length; i++) {
+          status.textContent = `Merging item ${i + 1} of ${clips.length}...`;
+          const clip = clips[i];
+          const outFile = `part_${i}.mp4`;
+
+          if (clip.type === "photo") {
+            await ffmpeg.writeFile(`in_${i}.jpg`, await fetchFile(clip.blob));
+            await ffmpeg.exec([
+              "-loop", "1", "-i", `in_${i}.jpg`,
+              "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+              "-t", "3", "-vf", `${scale},fps=30,format=yuv420p`,
+              "-c:v", "libx264", "-crf", crf, "-preset", "veryfast",
+              "-c:a", "aac", "-shortest", outFile
+            ]);
+          } else {
+            await ffmpeg.writeFile(`in_${i}.webm`, await fetchFile(clip.blob));
+            await ffmpeg.exec([
+              "-i", `in_${i}.webm`,
+              "-vf", `${scale},fps=30,format=yuv420p`,
+              "-c:v", "libx264", "-crf", crf, "-preset", "veryfast",
+              "-c:a", "aac", "-ar", "44100", "-ac", "2", outFile
+            ]);
+          }
+          listContent += `file '${outFile}'\n`;
+        }
+
+        await ffmpeg.writeFile("list.txt", listContent);
+        await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy", "inspection_final.mp4"]);
+
+        const data = await ffmpeg.readFile("inspection_final.mp4");
+        const url = URL.createObjectURL(new Blob([data.buffer], { type: "video/mp4" }));
+        
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Inspection_${new Date().toISOString().slice(0,10)}.mp4`;
+        a.click();
+
+        status.textContent = "✅ Export Complete! File downloaded.";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "❌ Export failed. Ensure site is hosted with COOP/COEP headers.";
+      } finally {
+        exportBtn.disabled = false;
+      }
+    }
+
+    window.onload = () => {
+      initCamera();
+      renderThumbnails();
+    };
+  </script>
+</body>
+</html>
