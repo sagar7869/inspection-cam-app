@@ -3,69 +3,165 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Field Inspection Cam</title>
+  <title>InspectCam Pro</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#030712" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- IndexedDB Library (Zero Data Loss on Refresh) -->
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-  <!-- FFmpeg.wasm (Video + Photo Merge & Quality Export) -->
   <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
   <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+  <style>
+    body { height: 100dvh; overflow: hidden; }
+  </style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen flex flex-col justify-between select-none">
+<body class="bg-gray-950 text-white flex flex-col justify-between select-none">
 
   <!-- Top Header -->
-  <header class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
-    <h1 class="font-bold text-lg tracking-wide text-blue-400">InspectCam Pro</h1>
-    <button onclick="clearAllClips()" class="text-xs bg-red-900/50 text-red-300 px-3 py-1.5 rounded-lg border border-red-800">
-      Clear All
-    </button>
+  <header class="px-4 py-2.5 bg-gray-900 border-b border-gray-800 flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+      <h1 class="font-bold text-base tracking-wide text-white">InspectCam</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="stopCamBtn" onclick="stopCamera()" class="hidden text-xs bg-gray-800 text-gray-300 px-2.5 py-1.5 rounded-lg border border-gray-700">
+        Close Cam
+      </button>
+      <button onclick="clearAllClips()" class="text-xs bg-red-950 text-red-300 px-2.5 py-1.5 rounded-lg border border-red-800/70">
+        Clear All
+      </button>
+    </div>
   </header>
 
-  <!-- Main Back Camera View -->
-  <main class="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
-    <video id="cameraPreview" autoplay playsinline muted class="w-full h-full object-cover"></video>
+  <!-- Center Camera Viewport -->
+  <main class="relative flex-1 bg-black flex flex-col items-center justify-center overflow-hidden">
     
-    <!-- Recording Indicator -->
-    <div id="recBadge" class="hidden absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse">
-      ● REC
+    <!-- Camera Off Placeholder Screen -->
+    <div id="cameraPlaceholder" class="flex flex-col items-center justify-center p-6 text-center space-y-4">
+      <div class="w-20 h-20 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center text-4xl shadow-inner">
+        📷
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold text-gray-100">Camera is Standby</h2>
+        <p class="text-xs text-gray-400 mt-1 max-w-xs">Tap below to start the main rear camera for inspection.</p>
+      </div>
+      <button onclick="startCamera()" class="bg-blue-600 hover:bg-blue-500 active:scale-95 transition text-white font-semibold px-6 py-3 rounded-full shadow-lg shadow-blue-600/30">
+        Open Camera
+      </button>
     </div>
 
-    <!-- Camera Controls -->
-    <div class="absolute bottom-5 inset-x-0 flex justify-center items-center gap-5 px-4">
-      <button id="photoBtn" onclick="takePhoto()" class="bg-white text-gray-900 font-bold px-5 py-3.5 rounded-full shadow-lg active:scale-95 transition">
-        📸 Photo
-      </button>
-      <button id="recordBtn" onclick="toggleVideo()" class="bg-blue-600 text-white font-bold px-7 py-3.5 rounded-full shadow-lg active:scale-95 transition">
-        🎥 Start Video
-      </button>
+    <!-- Live Video Stream -->
+    <video id="cameraPreview" autoplay playsinline muted class="hidden w-full h-full object-cover"></video>
+
+    <!-- Recording Timer Badge -->
+    <div id="recBadge" class="hidden absolute top-4 left-4 bg-red-600/90 backdrop-blur text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow">
+      <span class="w-2 h-2 bg-white rounded-full animate-ping"></span>
+      <span id="recTimer">00:00</span>
+    </div>
+
+    <!-- Active Camera Controls Overlay -->
+    <div id="cameraControls" class="hidden absolute bottom-4 inset-x-0 flex flex-col items-center gap-3 px-4">
+      
+      <!-- Mode Switcher (Video / Photo) -->
+      <div id="modeSwitcher" class="bg-gray-900/85 backdrop-blur-md p-1 rounded-full border border-gray-700/80 flex text-xs font-semibold">
+        <button id="tabVideo" onclick="switchMode('video')" class="px-4 py-1.5 rounded-full bg-blue-600 text-white transition">
+          Video
+        </button>
+        <button id="tabPhoto" onclick="switchMode('photo')" class="px-4 py-1.5 rounded-full text-gray-300 transition">
+          Photo
+        </button>
+      </div>
+
+      <!-- Shutter / Record Action Button -->
+      <div class="flex items-center justify-center">
+        <!-- Video Action -->
+        <button id="videoActionBtn" onclick="toggleVideoRecording()" class="h-16 px-7 rounded-full bg-red-600 text-white font-bold shadow-xl border-4 border-white/20 active:scale-95 transition flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-full bg-white"></span>
+          <span>Start Rec</span>
+        </button>
+
+        <!-- Photo Action -->
+        <button id="photoActionBtn" onclick="capturePhoto()" class="hidden w-16 h-16 rounded-full bg-white text-gray-900 shadow-xl border-4 border-gray-400 active:scale-90 transition flex items-center justify-center text-2xl">
+          📸
+        </button>
+      </div>
     </div>
   </main>
 
-  <!-- Bottom Thumbnail Strip & Export Bar -->
-  <footer class="bg-gray-900 border-t border-gray-800 p-3 space-y-3">
-    <!-- Thumbnails Queue -->
-    <div id="thumbnailList" class="flex gap-2.5 overflow-x-auto pb-1 min-h-[76px] items-center">
-      <p class="text-gray-500 text-xs mx-auto">No clips or photos captured yet.</p>
+  <!-- Bottom Thumbnail Queue & Export Trigger -->
+  <footer class="bg-gray-900 border-t border-gray-800 p-3 space-y-2.5 shrink-0">
+    <div class="flex justify-between items-center text-[11px] text-gray-400 px-1">
+      <span id="clipCountLabel">Captured Items (0)</span>
+      <span>Auto-saved offline</span>
     </div>
 
-    <!-- Export Controls -->
-    <div class="flex gap-2 items-center">
-      <select id="qualitySelect" class="bg-gray-800 text-sm text-white px-3 py-2.5 rounded-lg border border-gray-700 outline-none">
-        <option value="original">Original Quality (1080p)</option>
-        <option value="720p" selected>Medium (720p)</option>
-        <option value="480p">Compressed (480p)</option>
-      </select>
-      <button id="exportBtn" onclick="exportFinalVideo()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-lg shadow transition">
-        Export Final Video
-      </button>
+    <!-- Horizontal Thumbnail Strip -->
+    <div id="thumbnailList" class="flex gap-2.5 overflow-x-auto pb-1 min-h-[72px] items-center">
+      <p class="text-gray-500 text-xs mx-auto">No clips or photos saved yet.</p>
     </div>
-    <p id="statusText" class="text-xs text-center text-amber-400 hidden"></p>
+
+    <!-- Open Export Modal Button -->
+    <button onclick="openExportModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold py-3 rounded-xl shadow-lg transition text-sm">
+      Proceed to Export & Share →
+    </button>
   </footer>
 
+  <!-- EXPORT & SHARE MODAL -->
+  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-3">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-base text-white">Export Inspection Video</h3>
+        <button onclick="closeExportModal()" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Custom File Name Input -->
+      <div class="space-y-1">
+        <label class="text-xs text-gray-400 font-medium">File Name</label>
+        <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5">
+          <input id="fileNameInput" type="text" placeholder="e.g. Motor_Unit_04" class="bg-transparent text-sm text-white w-full outline-none" />
+          <span class="text-xs text-gray-400 font-mono">.mp4</span>
+        </div>
+      </div>
+
+      <!-- Quality Selection -->
+      <div class="space-y-1">
+        <label class="text-xs text-gray-400 font-medium">Video Quality</label>
+        <select id="qualitySelect" class="w-full bg-gray-800 text-sm text-white px-3 py-2.5 rounded-xl border border-gray-700 outline-none">
+          <option value="original">Original Quality (1080p Full HD)</option>
+          <option value="720p" selected>Medium Quality (720p HD - Recommended)</option>
+          <option value="480p">Compressed (480p - Fast WhatsApp Share)</option>
+        </select>
+      </div>
+
+      <!-- Progress Bar -->
+      <div id="progressBox" class="hidden space-y-1.5 bg-gray-950 p-3 rounded-xl border border-gray-800">
+        <div class="flex justify-between text-xs">
+          <span id="statusText" class="text-amber-400">Preparing...</span>
+          <span id="percentText" class="text-gray-400 font-mono">0%</span>
+        </div>
+        <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+          <div id="progressBar" class="bg-emerald-500 h-full w-0 transition-all duration-200"></div>
+        </div>
+      </div>
+
+      <!-- Generate Button -->
+      <button id="generateBtn" onclick="generateFinalVideo()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow transition text-sm">
+        Create Video
+      </button>
+
+      <!-- Download & Native Share Buttons (Shown after video is created) -->
+      <div id="postExportActions" class="hidden grid grid-cols-2 gap-3 pt-1">
+        <button onclick="downloadGeneratedVideo()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+          ⬇️ Download
+        </button>
+        <button onclick="shareGeneratedVideo()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+          📤 Share App
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // 1. Setup IndexedDB (Data survives page refresh)
+    // IndexedDB Setup
     const db = new Dexie("InspectionCamDB");
     db.version(1).stores({ clips: "++id, type, createdAt" });
 
@@ -73,24 +169,113 @@
     let mediaRecorder = null;
     let recordedChunks = [];
     let isRecording = false;
+    let currentMode = "video"; // 'video' or 'photo'
+    let timerInterval = null;
+    let secondsElapsed = 0;
 
-    // 2. Start Main Back Camera
-    async function initCamera() {
+    let finalVideoBlob = null;
+    let finalFileName = "Inspection_Report.mp4";
+
+    // 1. Start Camera ONLY when user clicks "Open Camera"
+    async function startCamera() {
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: true
         });
-        document.getElementById("cameraPreview").srcObject = mediaStream;
+        const videoEl = document.getElementById("cameraPreview");
+        videoEl.srcObject = mediaStream;
+        videoEl.classList.remove("hidden");
+
+        document.getElementById("cameraPlaceholder").classList.add("hidden");
+        document.getElementById("cameraControls").classList.remove("hidden");
+        document.getElementById("stopCamBtn").classList.remove("hidden");
       } catch (err) {
-        alert("Camera error: Please allow camera permission and use HTTPS.");
+        alert("Camera permission denied or unavailable. Please allow camera access.");
       }
     }
 
-    // 3. Capture Instant Photo & Save to IndexedDB
-    async function takePhoto() {
+    function stopCamera() {
+      if (isRecording) return alert("Pehle current video clip save karein!");
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      document.getElementById("cameraPreview").classList.add("hidden");
+      document.getElementById("cameraControls").classList.add("hidden");
+      document.getElementById("stopCamBtn").classList.add("hidden");
+      document.getElementById("cameraPlaceholder").classList.remove("hidden");
+    }
+
+    // 2. Switch between Video and Photo mode
+    function switchMode(mode) {
+      if (isRecording) return;
+      currentMode = mode;
+
+      const tabVideo = document.getElementById("tabVideo");
+      const tabPhoto = document.getElementById("tabPhoto");
+      const videoBtn = document.getElementById("videoActionBtn");
+      const photoBtn = document.getElementById("photoActionBtn");
+
+      if (mode === "video") {
+        tabVideo.className = "px-4 py-1.5 rounded-full bg-blue-600 text-white transition";
+        tabPhoto.className = "px-4 py-1.5 rounded-full text-gray-300 transition";
+        videoBtn.classList.remove("hidden");
+        photoBtn.classList.add("hidden");
+      } else {
+        tabPhoto.className = "px-4 py-1.5 rounded-full bg-blue-600 text-white transition";
+        tabVideo.className = "px-4 py-1.5 rounded-full text-gray-300 transition";
+        photoBtn.classList.remove("hidden");
+        videoBtn.classList.add("hidden");
+      }
+    }
+
+    // 3. Video Recording Start / Save
+    function toggleVideoRecording() {
+      const btn = document.getElementById("videoActionBtn");
+      const badge = document.getElementById("recBadge");
+      const switcher = document.getElementById("modeSwitcher");
+
+      if (!isRecording) {
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType: "video/webm" });
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+
+        mediaRecorder.onstop = async () => {
+          const videoBlob = new Blob(recordedChunks, { type: "video/webm" });
+          const thumbUrl = captureVideoFrame(240, 135, 0.6);
+          await db.clips.add({ type: "video", blob: videoBlob, thumbUrl, createdAt: Date.now() });
+          renderThumbnails();
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        startTimer();
+
+        btn.innerHTML = `<span class="w-3.5 h-3.5 bg-white rounded-sm"></span><span>Save Clip</span>`;
+        btn.classList.replace("bg-red-600", "bg-emerald-600");
+        badge.classList.remove("hidden");
+        switcher.classList.add("opacity-40", "pointer-events-none");
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        stopTimer();
+
+        btn.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-white"></span><span>Start Rec</span>`;
+        btn.classList.replace("bg-emerald-600", "bg-red-600");
+        badge.classList.add("hidden");
+        switcher.classList.remove("opacity-40", "pointer-events-none");
+      }
+    }
+
+    // 4. Instant Photo Capture & Save
+    async function capturePhoto() {
       const video = document.getElementById("cameraPreview");
       if (!video.videoWidth) return;
+
+      // Flash feedback
+      video.classList.add("opacity-50");
+      setTimeout(() => video.classList.remove("opacity-50"), 120);
 
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
@@ -104,67 +289,51 @@
       }, "image/jpeg", 0.95);
     }
 
-    // 4. Record Video Clip & Save to IndexedDB on Stop
-    function toggleVideo() {
-      const btn = document.getElementById("recordBtn");
-      const badge = document.getElementById("recBadge");
-      const photoBtn = document.getElementById("photoBtn");
-
-      if (!isRecording) {
-        recordedChunks = [];
-        mediaRecorder = new MediaRecorder(mediaStream, { mimeType: "video/webm" });
-        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-        
-        mediaRecorder.onstop = async () => {
-          const videoBlob = new Blob(recordedChunks, { type: "video/webm" });
-          const thumbUrl = getVideoThumbnail();
-          await db.clips.add({ type: "video", blob: videoBlob, thumbUrl, createdAt: Date.now() });
-          renderThumbnails();
-        };
-
-        mediaRecorder.start();
-        isRecording = true;
-        btn.textContent = "⏹ Submit Clip";
-        btn.classList.replace("bg-blue-600", "bg-red-600");
-        badge.classList.remove("hidden");
-        photoBtn.disabled = true;
-      } else {
-        mediaRecorder.stop();
-        isRecording = false;
-        btn.textContent = "🎥 Start Video";
-        btn.classList.replace("bg-red-600", "bg-blue-600");
-        badge.classList.add("hidden");
-        photoBtn.disabled = false;
-      }
-    }
-
-    function getVideoThumbnail() {
+    function captureVideoFrame(w, h, q) {
       const video = document.getElementById("cameraPreview");
       const canvas = document.createElement("canvas");
-      canvas.width = 240;
-      canvas.height = 135;
-      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL("image/jpeg", 0.6);
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(video, 0, 0, w, h);
+      return canvas.toDataURL("image/jpeg", q);
     }
 
-    // 5. Render Thumbnails from IndexedDB
+    function startTimer() {
+      secondsElapsed = 0;
+      document.getElementById("recTimer").textContent = "00:00";
+      timerInterval = setInterval(() => {
+        secondsElapsed++;
+        const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, "0");
+        const secs = String(secondsElapsed % 60).padStart(2, "0");
+        document.getElementById("recTimer").textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    // 5. Render Thumbnail Strip
     async function renderThumbnails() {
       const clips = await db.clips.toArray();
       const container = document.getElementById("thumbnailList");
+      document.getElementById("clipCountLabel").textContent = `Captured Items (${clips.length})`;
+
       if (clips.length === 0) {
-        container.innerHTML = `<p class="text-gray-500 text-xs mx-auto">No clips or photos captured yet.</p>`;
+        container.innerHTML = `<p class="text-gray-500 text-xs mx-auto">No clips or photos saved yet.</p>`;
         return;
       }
 
-      container.innerHTML = clips.map((clip, index) => `
-        <div class="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden border border-gray-700 bg-black">
+      container.innerHTML = clips.map((clip, idx) => `
+        <div class="relative flex-shrink-0 w-20 h-16 rounded-xl overflow-hidden border border-gray-700 bg-black shadow">
           <img src="${clip.thumbUrl}" class="w-full h-full object-cover" />
-          <span class="absolute bottom-0.5 left-1 text-[10px] bg-black/70 px-1 rounded">
-            ${clip.type === 'video' ? '🎥' : '📸'} #${index + 1}
+          <span class="absolute bottom-1 left-1 text-[10px] font-semibold bg-black/75 px-1.5 py-0.5 rounded">
+            ${clip.type === 'video' ? '🎥' : '📸'} #${idx + 1}
           </span>
-          <button onclick="deleteClip(${clip.id})" class="absolute top-0.5 right-0.5 bg-red-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">×</button>
+          <button onclick="deleteClip(${clip.id})" class="absolute top-1 right-1 bg-red-600/90 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center leading-none">×</button>
         </div>
       `).join("");
+      container.scrollLeft = container.scrollWidth;
     }
 
     async function deleteClip(id) {
@@ -173,24 +342,48 @@
     }
 
     async function clearAllClips() {
-      if (confirm("Delete all captured clips and photos?")) {
+      if (isRecording) return alert("Pehle recording stop karein!");
+      if (confirm("Saare saved videos aur photos delete karne hain?")) {
         await db.clips.clear();
         renderThumbnails();
       }
     }
 
-    // 6. Export Final Merged Video (Videos + Photos)
-    async function exportFinalVideo() {
+    // 6. Export Modal Logic
+    async function openExportModal() {
+      if (isRecording) return alert("Pehle current recording save karein!");
       const clips = await db.clips.toArray();
-      if (clips.length === 0) return alert("Pehle kam se kam 1 video ya photo capture karein!");
+      if (clips.length === 0) return alert("Export karne ke liye kam se kam 1 video ya photo capture karein!");
 
-      const status = document.getElementById("statusText");
-      const exportBtn = document.getElementById("exportBtn");
+      const defaultName = `Inspection_${new Date().toISOString().slice(0, 10)}`;
+      document.getElementById("fileNameInput").value = defaultName;
+      document.getElementById("postExportActions").classList.add("hidden");
+      document.getElementById("progressBox").classList.add("hidden");
+      document.getElementById("generateBtn").classList.remove("hidden");
+      document.getElementById("exportModal").classList.remove("hidden");
+    }
+
+    function closeExportModal() {
+      document.getElementById("exportModal").classList.add("hidden");
+    }
+
+    // 7. Merge Clips & Photos into Final MP4
+    async function generateFinalVideo() {
+      const clips = await db.clips.toArray();
+      const rawName = document.getElementById("fileNameInput").value.trim() || "Inspection_Video";
+      finalFileName = rawName.replace(/[^a-zA-Z0-9_-]/g, "_") + ".mp4";
+
       const quality = document.getElementById("qualitySelect").value;
+      const generateBtn = document.getElementById("generateBtn");
+      const progressBox = document.getElementById("progressBox");
+      const statusText = document.getElementById("statusText");
+      const percentText = document.getElementById("percentText");
+      const progressBar = document.getElementById("progressBar");
 
-      status.classList.remove("hidden");
-      exportBtn.disabled = true;
-      status.textContent = "Loading video engine (first time takes ~10 sec)...";
+      generateBtn.disabled = true;
+      generateBtn.textContent = "Processing...";
+      progressBox.classList.remove("hidden");
+      statusText.textContent = "Loading video engine...";
 
       try {
         const { FFmpeg } = FFmpegWASM;
@@ -198,7 +391,9 @@
         const ffmpeg = new FFmpeg();
 
         ffmpeg.on("progress", ({ progress }) => {
-          status.textContent = `Processing video: ${Math.min(100, Math.round(progress * 100))}%`;
+          const pct = Math.min(100, Math.round(progress * 100));
+          percentText.textContent = `${pct}%`;
+          progressBar.style.width = `${pct}%`;
         });
 
         const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
@@ -217,7 +412,7 @@
         let listContent = "";
 
         for (let i = 0; i < clips.length; i++) {
-          status.textContent = `Merging item ${i + 1} of ${clips.length}...`;
+          statusText.textContent = `Merging item ${i + 1} of ${clips.length}...`;
           const clip = clips[i];
           const outFile = `part_${i}.mp4`;
 
@@ -242,28 +437,60 @@
           listContent += `file '${outFile}'\n`;
         }
 
+        statusText.textContent = "Finalizing MP4...";
         await ffmpeg.writeFile("list.txt", listContent);
-        await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy", "inspection_final.mp4"]);
+        await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "list.txt", "-c", "copy", "final_out.mp4"]);
 
-        const data = await ffmpeg.readFile("inspection_final.mp4");
-        const url = URL.createObjectURL(new Blob([data.buffer], { type: "video/mp4" }));
-        
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Inspection_${new Date().toISOString().slice(0,10)}.mp4`;
-        a.click();
+        const data = await ffmpeg.readFile("final_out.mp4");
+        finalVideoBlob = new Blob([data.buffer], { type: "video/mp4" });
 
-        status.textContent = "✅ Export Complete! File downloaded.";
+        statusText.textContent = "✅ Video Ready!";
+        percentText.textContent = "100%";
+        progressBar.style.width = "100%";
+
+        generateBtn.classList.add("hidden");
+        document.getElementById("postExportActions").classList.remove("hidden");
       } catch (err) {
         console.error(err);
-        status.textContent = "❌ Export failed. Ensure site is hosted with COOP/COEP headers.";
+        statusText.textContent = "❌ Error generating video. Check Vercel COOP/COEP headers.";
       } finally {
-        exportBtn.disabled = false;
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Create Video";
       }
     }
 
+    // 8. Download File to Device
+    function downloadGeneratedVideo() {
+      if (!finalVideoBlob) return;
+      const url = URL.createObjectURL(finalVideoBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = finalFileName;
+      a.click();
+    }
+
+    // 9. Native Mobile Share Sheet (WhatsApp, Gmail, Drive, Telegram, etc.)
+    async function shareGeneratedVideo() {
+      if (!finalVideoBlob) return;
+      const file = new File([finalVideoBlob], finalFileName, { type: "video/mp4" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: finalFileName,
+            text: "Inspection video report"
+          });
+        } catch (err) {
+          if (err.name !== "AbortError") alert("Share failed. Please use Download button.");
+        }
+      } else {
+        alert("Aapka browser direct file sharing support nahi karta. Kripya Download button ka use karein.");
+      }
+    }
+
+    // Load saved thumbnails on startup (without starting camera)
     window.onload = () => {
-      initCamera();
       renderThumbnails();
     };
   </script>
