@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>InspectPro — Full-Screen Inspection Cam</title>
+  <title>InspectPro — HD Field Audit Studio</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#030712" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
       margin: 0;
@@ -17,7 +17,7 @@
       width: 100%;
       height: 100dvh;
       overflow: hidden;
-      background-color: #000000;
+      background-color: #030712;
       font-family: 'Inter', sans-serif;
     }
     .mono { font-family: 'JetBrains Mono', monospace; }
@@ -27,129 +27,161 @@
 </head>
 <body class="text-white relative select-none">
 
-  <!-- FULL-SCREEN LIVE CAMERA / RECORDING CANVAS -->
+  <!-- FULL-SCREEN LIVE CAMERA CANVAS -->
   <div id="stageContainer" class="fixed inset-0 w-full h-full bg-black flex items-center justify-center">
-    <!-- Hidden raw video source -->
     <video id="rawVideo" autoplay playsinline muted class="hidden"></video>
-    <!-- Full-screen edge-to-edge canvas (Exact screen ratio, ZERO black padding!) -->
     <canvas id="liveCanvas" class="hidden w-full h-full object-cover"></canvas>
   </div>
 
-  <!-- STANDBY LAUNCH SCREEN (Before Camera Starts) -->
-  <div id="standbyScreen" class="fixed inset-0 z-30 bg-slate-950 flex flex-col justify-between p-6">
+  <!-- STANDBY LAUNCH SCREEN -->
+  <div id="standbyScreen" class="fixed inset-0 z-30 bg-gradient-to-b from-slate-950 via-[#070d1a] to-slate-950 flex flex-col justify-between p-6">
+    <!-- Top Brand Header -->
     <div class="flex justify-between items-center">
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shadow-lg">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
         </div>
         <div>
           <h1 class="font-bold text-base tracking-tight text-white leading-none">InspectPro</h1>
-          <p class="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-1">Instant Video Studio</p>
+          <p class="text-[10px] text-blue-400/90 font-semibold tracking-widest uppercase mt-1 mono">HD Audit Studio</p>
         </div>
       </div>
 
-      <button id="savedReportBtn" onclick="openSavedReport()" class="hidden text-xs font-semibold bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 px-3 py-2 rounded-xl flex items-center gap-1.5">
+      <!-- Last Unsaved / Saved Video Quick Access -->
+      <button id="savedReportBtn" onclick="openSavedReport()" class="hidden text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-lg transition active:scale-95">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span>Last Video</span>
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
       </button>
     </div>
 
-    <div class="max-w-xs mx-auto text-center space-y-5 my-auto">
-      <div class="w-24 h-24 mx-auto rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-400 shadow-2xl">
-        <svg class="w-11 h-11" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+    <!-- Center Hero Card -->
+    <div class="max-w-xs mx-auto text-center space-y-6 my-auto">
+      <div class="relative w-24 h-24 mx-auto">
+        <div class="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full"></div>
+        <div class="relative w-24 h-24 rounded-3xl bg-slate-900/90 border border-slate-800 flex items-center justify-center text-blue-400 shadow-2xl">
+          <svg class="w-11 h-11" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
       </div>
+
       <div class="space-y-2">
-        <h2 class="text-xl font-bold text-white">Full-Screen Inspection Cam</h2>
+        <h2 class="text-xl font-bold text-white tracking-tight">Ready for Inspection</h2>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Record multiple angles with Pause/Resume & insert live photos directly into one single full-screen video. Zero export wait time.
+          Full-HD rear camera with optical zoom, torch & instant multi-angle video + photo stitching.
         </p>
       </div>
-      <button onclick="openFullCamera()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 transition text-white font-semibold text-sm py-4 rounded-2xl shadow-xl shadow-blue-600/30">
-        Start Inspection Camera
+
+      <button onclick="openFullCamera()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 transition text-white font-semibold text-sm py-4 rounded-2xl shadow-xl shadow-blue-600/25 flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        <span>Open HD Camera</span>
       </button>
     </div>
 
-    <div class="text-center text-[11px] text-slate-500">
-      Full-Screen Edge-to-Edge • Zero Black Borders
+    <!-- Bottom Feature Pills -->
+    <div class="flex justify-center gap-2 text-[10px] text-slate-400 mono">
+      <span class="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">1080P HD</span>
+      <span class="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">ZOOM & TORCH</span>
+      <span class="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">0s EXPORT</span>
     </div>
   </div>
 
-  <!-- ACTIVE CAMERA HUD OVERLAY (Floating on Top of Full-Screen Video) -->
+  <!-- ACTIVE CAMERA HUD OVERLAY -->
   <div id="cameraHUD" class="hidden fixed inset-0 z-20 flex flex-col justify-between pointer-events-none">
     
-    <!-- Top Floating Bar -->
-    <div class="p-4 bg-gradient-to-b from-black/75 via-black/30 to-transparent flex justify-between items-center pointer-events-auto">
+    <!-- Subtle Viewfinder Corner Brackets -->
+    <div class="fixed inset-6 pointer-events-none opacity-35">
+      <div class="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-white rounded-tl-md"></div>
+      <div class="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-white rounded-tr-md"></div>
+      <div class="absolute bottom-36 left-0 w-5 h-5 border-b-2 border-l-2 border-white rounded-bl-md"></div>
+      <div class="absolute bottom-36 right-0 w-5 h-5 border-b-2 border-r-2 border-white rounded-br-md"></div>
+    </div>
+
+    <!-- TOP FLOATING BAR (Status + Timer + Flash + Close) -->
+    <div class="p-4 bg-gradient-to-b from-black/80 via-black/35 to-transparent flex justify-between items-center pointer-events-auto">
       <div class="flex items-center gap-2">
-        <div id="statusPill" class="bg-black/60 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-semibold">
+        <div id="statusPill" class="bg-black/65 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-semibold">
           <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span id="statusLabel" class="mono">READY</span>
+          <span id="statusLabel" class="mono text-[11px]">HD READY</span>
         </div>
-        <div id="timerPill" class="hidden bg-red-600/90 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold mono">
+        <div id="timerPill" class="hidden bg-red-600/95 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold mono shadow-lg">
           00:00
         </div>
       </div>
 
-      <button onclick="closeCameraToStandby()" class="bg-black/60 backdrop-blur-md border border-white/15 text-white/90 text-xs font-medium px-3.5 py-1.5 rounded-full active:scale-95">
-        Close
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Flash / Torch Toggle Button -->
+        <button id="torchBtn" onclick="toggleTorch()" class="hidden w-9 h-9 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white/90 flex items-center justify-center active:scale-90 transition" title="Toggle Flash">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </button>
+
+        <button onclick="closeCameraToStandby()" class="bg-black/65 backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold px-3.5 py-2 rounded-full active:scale-95 transition">
+          Close
+        </button>
+      </div>
     </div>
 
-    <!-- Center Freeze Notification Banner (Shown when Photo is inserted into video) -->
-    <div id="photoFreezeBanner" class="hidden mx-auto bg-amber-500 text-black font-bold text-xs px-4 py-2 rounded-full shadow-2xl tracking-wide uppercase">
-      📸 Photo Captured into Video (2.5s)
+    <!-- Center Photo Freeze Notification -->
+    <div id="photoFreezeBanner" class="hidden mx-auto bg-amber-400 text-black font-bold text-xs px-4 py-2 rounded-full shadow-2xl tracking-wide uppercase flex items-center gap-1.5">
+      <span>📸 Photo Added to Video (2.5s)</span>
     </div>
 
-    <!-- Bottom Floating Controls & Captured Shots Strip -->
-    <div class="p-4 pb-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent space-y-4 pointer-events-auto">
+    <!-- BOTTOM CONTROLS STACK -->
+    <div class="p-4 pb-6 bg-gradient-to-t from-black/95 via-black/70 to-transparent space-y-3.5 pointer-events-auto">
       
-      <!-- Captured Angles Mini Strip -->
-      <div id="shotsStrip" class="flex gap-2 overflow-x-auto min-h-[54px] items-center px-1">
-        <span class="text-[11px] text-white/60 mx-auto">Tap Record to start capturing angles</span>
+      <!-- ZOOM PILLS BAR (Auto-shown if camera supports zoom) -->
+      <div id="zoomControls" class="hidden flex justify-center">
+        <div id="zoomButtonsContainer" class="bg-black/65 backdrop-blur-md border border-white/15 rounded-full p-1 flex items-center gap-1 text-[11px] font-bold mono">
+          <!-- Dynamically populated based on camera capabilities -->
+        </div>
       </div>
 
-      <!-- Mode Switcher (Only before recording starts) -->
+      <!-- Captured Angles Thumbnail Strip -->
+      <div id="shotsStrip" class="flex gap-2 overflow-x-auto min-h-[56px] items-center px-1">
+        <span id="emptyStripHint" class="text-[11px] text-white/60 mx-auto">Tap Start Recording to capture angles</span>
+      </div>
+
+      <!-- Capture Mode Switcher (Only visible before recording starts) -->
       <div id="modeBar" class="flex justify-center">
-        <div class="bg-black/70 backdrop-blur-md p-1 rounded-full border border-white/15 flex text-xs font-semibold">
-          <button id="modeVideoBtn" onclick="setCaptureMode('video')" class="px-5 py-1.5 rounded-full bg-blue-600 text-white transition">
+        <div class="bg-black/75 backdrop-blur-md p-1 rounded-full border border-white/15 flex text-xs font-semibold">
+          <button id="modeVideoBtn" onclick="setCaptureMode('video')" class="px-4 py-1.5 rounded-full bg-blue-600 text-white transition">
             Video + Photo Mix
           </button>
-          <button id="modePhotoOnlyBtn" onclick="setCaptureMode('photo_slideshow')" class="px-5 py-1.5 rounded-full text-white/70 transition">
+          <button id="modePhotoOnlyBtn" onclick="setCaptureMode('photo_slideshow')" class="px-4 py-1.5 rounded-full text-white/70 transition">
             Photo-to-Video Only
           </button>
         </div>
       </div>
 
       <!-- Main Action Buttons Row -->
-      <div class="flex items-center justify-center gap-5">
+      <div class="flex items-center justify-center gap-4">
         
-        <!-- 1. Idle State: Start Recording Button -->
-        <button id="btnStartRec" onclick="startInspectionSession()" class="h-16 px-8 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-2xl ring-4 ring-white/25 active:scale-95 transition flex items-center gap-2.5">
+        <!-- 1. Idle State: Start Recording -->
+        <button id="btnStartRec" onclick="startInspectionSession()" class="h-15 py-4 px-8 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-2xl ring-4 ring-white/20 active:scale-95 transition flex items-center gap-2.5">
           <span class="w-3.5 h-3.5 rounded-full bg-white"></span>
           <span id="btnStartText">Start Recording</span>
         </button>
 
-        <!-- 2. Active Recording State: Pause/Resume + Insert Photo + Finish -->
+        <!-- 2. Active Recording State: Pause/Resume + Snap Photo + Finish -->
         <div id="activeRecControls" class="hidden flex items-center justify-center gap-3 w-full max-w-sm">
-          <!-- Pause / Resume Angle Button -->
-          <button id="btnPauseResume" onclick="togglePauseResume()" class="flex-1 h-14 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-xl active:scale-95 transition flex flex-col items-center justify-center">
+          <button id="btnPauseResume" onclick="togglePauseResume()" class="flex-1 h-14 rounded-2xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs shadow-xl active:scale-95 transition flex flex-col items-center justify-center">
             <span id="pauseIconText">⏸ Pause Angle</span>
           </button>
 
-          <!-- Snap Photo into Video Button -->
           <button id="btnSnapPhoto" onclick="insertPhotoIntoVideo()" class="w-16 h-16 rounded-full bg-white text-black shadow-2xl ring-4 ring-white/30 active:scale-90 transition flex flex-col items-center justify-center shrink-0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
-            <span class="text-[9px] font-bold uppercase mt-0.5">+Photo</span>
+            <span class="text-[9px] font-extrabold uppercase mt-0.5">+Photo</span>
           </button>
 
-          <!-- Finish & Save (0-Second Export!) -->
           <button onclick="finishAndOpenExport()" class="flex-1 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xl active:scale-95 transition flex flex-col items-center justify-center">
             <span>✅ Finish & Save</span>
           </button>
@@ -159,33 +191,34 @@
     </div>
   </div>
 
-  <!-- INSTANT EXPORT & SHARE SHEET (0-Second Ready!) -->
+  <!-- INSTANT EXPORT & SHARE MODAL -->
   <div id="exportModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-end sm:items-center justify-center p-3">
     <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-5 space-y-4 shadow-2xl">
       
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
           <h3 class="font-bold text-base text-white">Inspection Video Ready</h3>
-          <p class="text-[11px] text-emerald-400 font-medium">Compiled in 0.0s • Full-Screen Format</p>
+          <p class="text-[11px] text-emerald-400 font-medium">Full-Screen HD • Saved in browser memory</p>
         </div>
-        <button onclick="closeExportModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-lg">&times;</button>
+        <!-- Close Modal (Keeps video accessible via 'Last Video' button!) -->
+        <button onclick="closeExportModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg">&times;</button>
       </div>
 
-      <!-- Instant Video Preview Player -->
-      <div class="w-full h-52 bg-black rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
+      <!-- Instant Video Preview -->
+      <div class="w-full h-56 bg-black rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
         <video id="finalPreviewPlayer" controls playsinline class="w-full h-full object-contain"></video>
       </div>
 
       <!-- Custom File Name Input -->
       <div class="space-y-1.5">
-        <label class="text-xs text-slate-300 font-medium">Enter File Name</label>
+        <label class="text-xs text-slate-300 font-medium">File Name</label>
         <div class="flex items-center bg-slate-950 border border-slate-700 focus-within:border-blue-500 rounded-xl px-3.5 py-3">
           <input id="fileNameInput" type="text" placeholder="e.g. Motor_Inspection_01" class="bg-transparent text-sm text-white w-full outline-none font-semibold" />
           <span id="extBadge" class="text-xs text-slate-400 mono ml-2">.mp4</span>
         </div>
       </div>
 
-      <!-- Download & Native Share Buttons -->
+      <!-- Download & Share Buttons -->
       <div class="grid grid-cols-2 gap-3 pt-1">
         <button onclick="downloadVideoFile()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-95 transition">
           <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -197,26 +230,28 @@
         </button>
       </div>
 
-      <button onclick="startNewInspection()" class="w-full text-xs text-slate-400 hover:text-white py-2 text-center">
-        + Start New Item Inspection
+      <!-- Fresh New Inspection Trigger -->
+      <button onclick="startNewInspection()" class="w-full py-2.5 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 text-blue-300 font-semibold text-xs text-center transition">
+        + Start New Item Inspection (Fresh Session)
       </button>
     </div>
   </div>
 
   <script>
-    // IndexedDB to persist last exported video across page refresh
     const db = new Dexie("InspectProInstantDB");
     db.version(1).stores({ reports: "id, createdAt" });
 
     let mediaStream = null;
+    let videoTrack = null;
     let mediaRecorder = null;
     let recordedChunks = [];
     let animFrameId = null;
 
     let sessionState = "idle"; // 'idle' | 'recording' | 'paused'
     let captureMode = "video"; // 'video' | 'photo_slideshow'
-    let frozenImage = null;    // Holds snapshot when user clicks +Photo
+    let frozenImage = null;
     let shotCount = 0;
+    let torchOn = false;
 
     let timerInterval = null;
     let activeSeconds = 0;
@@ -224,7 +259,6 @@
     let readyVideoBlob = null;
     let readyFileExt = ".mp4";
 
-    // Detect best supported native format (MP4 on modern Chrome/Safari, WebM fallback)
     function getBestMime() {
       const candidates = [
         { mime: "video/mp4;codecs=avc1,mp4a.40.2", ext: ".mp4" },
@@ -238,27 +272,59 @@
       return { mime: "video/webm", ext: ".webm" };
     }
 
-    // 1. Open Full-Screen Rear Camera (Exact Device Aspect Ratio = Zero Black Bars!)
+    // Helper: Completely clear thumbnails & reset session state for a brand new inspection
+    function resetSessionCompletely() {
+      sessionState = "idle";
+      frozenImage = null;
+      shotCount = 0;
+      recordedChunks = [];
+      activeSeconds = 0;
+      clearInterval(timerInterval);
+
+      // Clear previous thumbnails from strip!
+      const strip = document.getElementById("shotsStrip");
+      strip.innerHTML = `<span id="emptyStripHint" class="text-[11px] text-white/60 mx-auto">Tap Start Recording to capture angles</span>`;
+
+      // Reset Pause button styling
+      const pauseBtn = document.getElementById("btnPauseResume");
+      pauseBtn.className = "flex-1 h-14 rounded-2xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs shadow-xl active:scale-95 transition flex flex-col items-center justify-center";
+      document.getElementById("pauseIconText").textContent = "⏸ Pause Angle";
+
+      // Reset Mode & Action Buttons
+      document.getElementById("modeBar").classList.remove("hidden");
+      document.getElementById("btnStartRec").classList.remove("hidden");
+      document.getElementById("activeRecControls").classList.add("hidden");
+      document.getElementById("timerPill").classList.add("hidden");
+      document.getElementById("photoFreezeBanner").classList.add("hidden");
+      updateHUDState("HD READY", "bg-emerald-400");
+    }
+
+    // 1. Open HD Rear Camera + Setup Zoom & Flash
     async function openFullCamera() {
+      resetSessionCompletely(); // Always start with a clean empty thumbnail strip
+
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+            frameRate: { ideal: 30 }
           },
           audio: true
         });
+
+        videoTrack = mediaStream.getVideoTracks()[0];
+        setupCameraHardwareControls(videoTrack);
 
         const rawVid = document.getElementById("rawVideo");
         rawVid.srcObject = mediaStream;
         await rawVid.play();
 
-        // Match canvas aspect ratio strictly to the full-screen viewport
         const canvas = document.getElementById("liveCanvas");
         const screenRatio = window.innerWidth / window.innerHeight;
-        const targetHeight = 1280;
-        const targetWidth = Math.round((targetHeight * screenRatio) / 2) * 2; // Even width
+        const targetHeight = 1440; // Crisp Full HD+ output height
+        const targetWidth = Math.round((targetHeight * screenRatio) / 2) * 2;
 
         canvas.width = targetWidth;
         canvas.height = targetHeight;
@@ -269,11 +335,78 @@
 
         startCanvasRenderLoop();
       } catch (err) {
-        alert("Camera permission required. Please allow camera & mic access.");
+        alert("Camera permission required. Please allow camera & microphone access.");
       }
     }
 
-    // Continuous full-screen cover render loop (Draws either live camera or frozen photo)
+    // Configure Hardware Torch (Flash) & Optical/Digital Zoom Pills
+    function setupCameraHardwareControls(track) {
+      const torchBtn = document.getElementById("torchBtn");
+      const zoomBox = document.getElementById("zoomControls");
+      const zoomContainer = document.getElementById("zoomButtonsContainer");
+
+      torchOn = false;
+      torchBtn.classList.add("hidden");
+      torchBtn.classList.remove("bg-amber-400", "text-black");
+      zoomBox.classList.add("hidden");
+
+      if (!track || typeof track.getCapabilities !== "function") return;
+      const caps = track.getCapabilities();
+
+      // 1. Torch / Flash support
+      if (caps.torch) {
+        torchBtn.classList.remove("hidden");
+      }
+
+      // 2. Zoom support
+      if (caps.zoom && caps.zoom.max > caps.zoom.min) {
+        const minZ = caps.zoom.min;
+        const maxZ = Math.min(caps.zoom.max, 5); // Cap at 5x for sharp quality
+        const levels = [minZ];
+        if (maxZ >= 1.5) levels.push(1.5);
+        if (maxZ >= 2) levels.push(2);
+        if (maxZ >= 3) levels.push(3);
+
+        zoomContainer.innerHTML = levels.map((z, idx) => `
+          <button onclick="setCameraZoom(${z}, this)" class="zoom-pill px-3 py-1 rounded-full transition ${idx === 0 ? 'bg-amber-400 text-black' : 'text-white/80 hover:text-white'}">
+            ${Number(z.toFixed(1))}x
+          </button>
+        `).join("");
+        zoomBox.classList.remove("hidden");
+      }
+    }
+
+    async function setCameraZoom(zoomVal, btnEl) {
+      if (!videoTrack) return;
+      try {
+        await videoTrack.applyConstraints({ advanced: [{ zoom: zoomVal }] });
+        document.querySelectorAll(".zoom-pill").forEach(el => {
+          el.className = "zoom-pill px-3 py-1 rounded-full transition text-white/80 hover:text-white";
+        });
+        btnEl.className = "zoom-pill px-3 py-1 rounded-full transition bg-amber-400 text-black";
+      } catch (e) {
+        console.warn("Zoom not supported:", e);
+      }
+    }
+
+    async function toggleTorch() {
+      if (!videoTrack) return;
+      const torchBtn = document.getElementById("torchBtn");
+      try {
+        torchOn = !torchOn;
+        await videoTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
+        if (torchOn) {
+          torchBtn.classList.remove("bg-black/65", "text-white/90");
+          torchBtn.classList.add("bg-amber-400", "text-black");
+        } else {
+          torchBtn.classList.add("bg-black/65", "text-white/90");
+          torchBtn.classList.remove("bg-amber-400", "text-black");
+        }
+      } catch (e) {
+        alert("Flashlight is not supported on this lens.");
+      }
+    }
+
     function startCanvasRenderLoop() {
       const rawVid = document.getElementById("rawVideo");
       const canvas = document.getElementById("liveCanvas");
@@ -293,7 +426,6 @@
       draw();
     }
 
-    // Center-crop cover fill so there are NEVER black borders
     function drawCover(ctx, src, sw, sh, cw, ch) {
       if (!sw || !sh) return;
       const scale = Math.max(cw / sw, ch / sh);
@@ -307,7 +439,9 @@
       if (mediaStream) {
         mediaStream.getTracks().forEach(t => t.stop());
         mediaStream = null;
+        videoTrack = null;
       }
+      torchOn = false;
       document.getElementById("liveCanvas").classList.add("hidden");
       document.getElementById("cameraHUD").classList.add("hidden");
     }
@@ -315,13 +449,14 @@
     function closeCameraToStandby() {
       if (sessionState !== "idle") {
         if (!confirm("Discard current active recording?")) return;
-        resetRecordingUI();
       }
+      resetSessionCompletely();
       stopAllCameraHardware();
       document.getElementById("standbyScreen").classList.remove("hidden");
+      checkSavedReport();
     }
 
-    // 2. Mode Switcher (Video+Photo Mix vs Photo-to-Video Only)
+    // 2. Mode Switcher
     function setCaptureMode(mode) {
       if (sessionState !== "idle") return;
       captureMode = mode;
@@ -330,23 +465,22 @@
       const startText = document.getElementById("btnStartText");
 
       if (mode === "video") {
-        b1.className = "px-5 py-1.5 rounded-full bg-blue-600 text-white transition";
-        b2.className = "px-5 py-1.5 rounded-full text-white/70 transition";
+        b1.className = "px-4 py-1.5 rounded-full bg-blue-600 text-white transition";
+        b2.className = "px-4 py-1.5 rounded-full text-white/70 transition";
         startText.textContent = "Start Recording";
       } else {
-        b2.className = "px-5 py-1.5 rounded-full bg-blue-600 text-white transition";
-        b1.className = "px-5 py-1.5 rounded-full text-white/70 transition";
+        b2.className = "px-4 py-1.5 rounded-full bg-blue-600 text-white transition";
+        b1.className = "px-4 py-1.5 rounded-full text-white/70 transition";
         startText.textContent = "Start Photo-Video";
       }
     }
 
-    // 3. Start Single-Stream Inspection Recording
+    // 3. Start Recording Session
     function startInspectionSession() {
       const canvas = document.getElementById("liveCanvas");
       const supported = getBestMime();
       readyFileExt = supported.ext;
 
-      // Combine full-screen canvas video + live mic audio into ONE stream
       const canvasStream = canvas.captureStream(30);
       const audioTracks = mediaStream ? mediaStream.getAudioTracks() : [];
       const combinedStream = new MediaStream([
@@ -355,9 +489,12 @@
       ]);
 
       recordedChunks = [];
+      shotCount = 0;
+      document.getElementById("shotsStrip").innerHTML = "";
+
       mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType: supported.mime,
-        videoBitsPerSecond: 4_500_000
+        videoBitsPerSecond: 6_500_000 // High-bitrate HD recording
       });
 
       mediaRecorder.ondataavailable = (e) => {
@@ -366,10 +503,7 @@
 
       mediaRecorder.start(250);
       sessionState = "recording";
-      shotCount = 0;
-      document.getElementById("shotsStrip").innerHTML = "";
 
-      // If Photo-to-Video mode, pause immediately after starting so user just clicks +Photo for each angle
       if (captureMode === "photo_slideshow") {
         setTimeout(() => {
           if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -381,7 +515,7 @@
         }, 150);
       } else {
         addShotThumbnail("VID #1");
-        updateHUDState("RECORDING", "bg-red-500 animate-ping");
+        updateHUDState("REC HD", "bg-red-500 animate-ping");
         document.getElementById("btnPauseResume").classList.remove("hidden");
       }
 
@@ -392,7 +526,7 @@
       startTimer();
     }
 
-    // 4. Pause / Resume Between Angles (Zero Gap!)
+    // 4. Pause / Resume Angle
     function togglePauseResume() {
       if (!mediaRecorder) return;
       const pauseBtn = document.getElementById("btnPauseResume");
@@ -401,22 +535,22 @@
       if (sessionState === "recording") {
         mediaRecorder.pause();
         sessionState = "paused";
-        pauseBtn.classList.replace("bg-amber-500", "bg-blue-600");
+        pauseBtn.classList.replace("bg-amber-400", "bg-blue-600");
         pauseBtn.classList.replace("text-black", "text-white");
         pauseText.textContent = "▶ Resume Angle";
         updateHUDState("PAUSED", "bg-amber-400");
       } else if (sessionState === "paused") {
         mediaRecorder.resume();
         sessionState = "recording";
-        pauseBtn.classList.replace("bg-blue-600", "bg-amber-500");
+        pauseBtn.classList.replace("bg-blue-600", "bg-amber-400");
         pauseBtn.classList.replace("text-white", "text-black");
         pauseText.textContent = "⏸ Pause Angle";
         addShotThumbnail(`VID #${shotCount + 1}`);
-        updateHUDState("RECORDING", "bg-red-500 animate-ping");
+        updateHUDState("REC HD", "bg-red-500 animate-ping");
       }
     }
 
-    // 5. Snap Photo Directly Into Active Video Stream (2.5 Seconds Hold!)
+    // 5. Snap Photo Directly Into Active Video (2.5 Seconds)
     async function insertPhotoIntoVideo() {
       if (!mediaRecorder || sessionState === "idle") return;
 
@@ -424,8 +558,7 @@
       const banner = document.getElementById("photoFreezeBanner");
       const snapBtn = document.getElementById("btnSnapPhoto");
 
-      // Capture current full-screen frame as frozen image
-      const snapDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      const snapDataUrl = canvas.toDataURL("image/jpeg", 0.94);
       const img = new Image();
       img.src = snapDataUrl;
       await new Promise(r => img.onload = r);
@@ -439,10 +572,9 @@
       if (wasPaused) {
         mediaRecorder.resume();
         sessionState = "recording";
-        updateHUDState("CAPTURING PHOTO...", "bg-amber-400 animate-ping");
+        updateHUDState("ADDING PHOTO...", "bg-amber-400 animate-ping");
       }
 
-      // Hold photo inside video for 2.5 seconds
       setTimeout(() => {
         frozenImage = null;
         banner.classList.add("hidden");
@@ -459,14 +591,17 @@
     function addShotThumbnail(label, customThumb) {
       shotCount++;
       const canvas = document.getElementById("liveCanvas");
-      const thumb = customThumb || canvas.toDataURL("image/jpeg", 0.5);
+      const thumb = customThumb || canvas.toDataURL("image/jpeg", 0.55);
       const strip = document.getElementById("shotsStrip");
 
+      const hint = document.getElementById("emptyStripHint");
+      if (hint) hint.remove();
+
       const item = document.createElement("div");
-      item.className = "relative flex-shrink-0 w-12 h-16 rounded-lg overflow-hidden border border-white/30 bg-black shadow";
+      item.className = "relative flex-shrink-0 w-12 h-16 rounded-xl overflow-hidden border border-white/30 bg-black shadow-lg";
       item.innerHTML = `
         <img src="${thumb}" class="w-full h-full object-cover" />
-        <span class="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] font-bold text-center py-0.5 mono">${label}</span>
+        <span class="absolute bottom-0 inset-x-0 bg-black/80 text-[8px] font-bold text-center py-0.5 mono">${label}</span>
       `;
       strip.appendChild(item);
       strip.scrollLeft = strip.scrollWidth;
@@ -490,7 +625,7 @@
       }, 1000);
     }
 
-    // 6. Finish & Open Export Sheet in 0.0 Seconds (No Waiting!)
+    // 6. Finish & Open Export Sheet Immediately (0.0s)
     async function finishAndOpenExport() {
       if (!mediaRecorder || sessionState === "idle") return;
 
@@ -507,7 +642,7 @@
       readyVideoBlob = new Blob(recordedChunks, { type: supported.mime });
       readyFileExt = supported.ext;
 
-      // Save to IndexedDB so even if user refreshes page, video is NOT lost!
+      // Save to IndexedDB so closing modal (X) or refreshing keeps 'Last Video' safe!
       await db.reports.put({
         id: "latest_inspection",
         blob: readyVideoBlob,
@@ -515,20 +650,9 @@
         createdAt: Date.now()
       });
 
-      resetRecordingUI();
+      resetSessionCompletely();
       stopAllCameraHardware();
       showExportSheet();
-    }
-
-    function resetRecordingUI() {
-      sessionState = "idle";
-      frozenImage = null;
-      document.getElementById("modeBar").classList.remove("hidden");
-      document.getElementById("btnStartRec").classList.remove("hidden");
-      document.getElementById("activeRecControls").classList.add("hidden");
-      document.getElementById("timerPill").classList.add("hidden");
-      document.getElementById("photoFreezeBanner").classList.add("hidden");
-      updateHUDState("READY", "bg-emerald-400");
     }
 
     function showExportSheet() {
@@ -543,18 +667,24 @@
       document.getElementById("exportModal").classList.remove("hidden");
     }
 
+    // Closing modal via 'X' returns to standby where 'Last Video' button stays ready!
     function closeExportModal() {
+      const player = document.getElementById("finalPreviewPlayer");
+      player.pause();
       document.getElementById("exportModal").classList.add("hidden");
       document.getElementById("standbyScreen").classList.remove("hidden");
       checkSavedReport();
     }
 
+    // Start New Item Inspection (Fresh session, clean thumbnails, keeps 'Last Video' in DB until overwritten)
     function startNewInspection() {
+      const player = document.getElementById("finalPreviewPlayer");
+      player.pause();
       document.getElementById("exportModal").classList.add("hidden");
       openFullCamera();
     }
 
-    // 7. Download & Share Anywhere
+    // 7. Download & Share
     function getCustomFileName() {
       const raw = document.getElementById("fileNameInput").value.trim() || "Inspection_Video";
       return raw.replace(/[^a-zA-Z0-9_-]/g, "_") + readyFileExt;
@@ -589,7 +719,6 @@
       }
     }
 
-    // Restore last video if page was refreshed
     async function checkSavedReport() {
       const saved = await db.reports.get("latest_inspection");
       if (saved && saved.blob) {
