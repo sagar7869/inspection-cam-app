@@ -35,7 +35,6 @@
 
   <!-- STANDBY LAUNCH SCREEN -->
   <div id="standbyScreen" class="fixed inset-0 z-30 bg-gradient-to-b from-slate-950 via-[#070d1a] to-slate-950 flex flex-col justify-between p-6">
-    <!-- Top Brand Header -->
     <div class="flex justify-between items-center">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shadow-lg">
@@ -49,7 +48,6 @@
         </div>
       </div>
 
-      <!-- Last Unsaved / Saved Video Quick Access -->
       <button id="savedReportBtn" onclick="openSavedReport()" class="hidden text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-lg transition active:scale-95">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span>Last Video</span>
@@ -57,7 +55,6 @@
       </button>
     </div>
 
-    <!-- Center Hero Card -->
     <div class="max-w-xs mx-auto text-center space-y-6 my-auto">
       <div class="relative w-24 h-24 mx-auto">
         <div class="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full"></div>
@@ -84,11 +81,10 @@
       <div class="flex justify-center gap-2 text-[10px] text-slate-400 mono pt-1">
         <span class="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">1080P HD</span>
         <span class="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">INSTANT SNAP</span>
-        <span class="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">0s EXPORT</span>
+        <span class="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">DIRECT SHARE</span>
       </div>
     </div>
 
-    <!-- Developer Credit Footer -->
     <div class="text-center pt-2">
       <div class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800/90 shadow">
         <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
@@ -102,7 +98,6 @@
   <!-- ACTIVE CAMERA HUD OVERLAY -->
   <div id="cameraHUD" class="hidden fixed inset-0 z-20 flex flex-col justify-between pointer-events-none">
     
-    <!-- Subtle Viewfinder Corner Brackets -->
     <div class="fixed inset-6 pointer-events-none opacity-35">
       <div class="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-white rounded-tl-md"></div>
       <div class="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-white rounded-tr-md"></div>
@@ -123,7 +118,6 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <!-- Flash / Torch Toggle Button -->
         <button id="torchBtn" onclick="toggleTorch()" class="hidden w-9 h-9 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white/90 flex items-center justify-center active:scale-90 transition" title="Toggle Flash">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -136,7 +130,6 @@
       </div>
     </div>
 
-    <!-- Fast Non-Blocking Toast Badge (Top-center under HUD, never blocks view or clicks) -->
     <div id="photoFreezeBanner" class="hidden mx-auto -mt-10 bg-amber-400/95 backdrop-blur text-black font-bold text-[11px] px-3.5 py-1 rounded-full shadow-lg tracking-wide uppercase">
       📸 Photo Added
     </div>
@@ -144,18 +137,15 @@
     <!-- BOTTOM CONTROLS STACK -->
     <div class="p-4 pb-6 bg-gradient-to-t from-black/95 via-black/70 to-transparent space-y-3.5 pointer-events-auto">
       
-      <!-- ZOOM PILLS BAR -->
       <div id="zoomControls" class="hidden flex justify-center">
         <div id="zoomButtonsContainer" class="bg-black/65 backdrop-blur-md border border-white/15 rounded-full p-1 flex items-center gap-1 text-[11px] font-bold mono">
         </div>
       </div>
 
-      <!-- Captured Angles Thumbnail Strip -->
       <div id="shotsStrip" class="flex gap-2 overflow-x-auto min-h-[56px] items-center px-1">
         <span id="emptyStripHint" class="text-[11px] text-white/60 mx-auto">Tap Start Recording to capture angles</span>
       </div>
 
-      <!-- Capture Mode Switcher -->
       <div id="modeBar" class="flex justify-center">
         <div class="bg-black/75 backdrop-blur-md p-1 rounded-full border border-white/15 flex text-xs font-semibold">
           <button id="modeVideoBtn" onclick="setCaptureMode('video')" class="px-4 py-1.5 rounded-full bg-blue-600 text-white transition">
@@ -167,22 +157,17 @@
         </div>
       </div>
 
-      <!-- Main Action Buttons Row -->
       <div class="flex items-center justify-center gap-4">
-        
-        <!-- 1. Idle State: Start Recording -->
         <button id="btnStartRec" onclick="startInspectionSession()" class="py-4 px-8 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-2xl ring-4 ring-white/20 active:scale-95 transition flex items-center gap-2.5">
           <span class="w-3.5 h-3.5 rounded-full bg-white"></span>
           <span id="btnStartText">Start Recording</span>
         </button>
 
-        <!-- 2. Active Recording State: Pause/Resume + Rapid Snap Photo + Finish -->
         <div id="activeRecControls" class="hidden flex items-center justify-center gap-3 w-full max-w-sm">
           <button id="btnPauseResume" onclick="togglePauseResume()" class="flex-1 h-14 rounded-2xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs shadow-xl active:scale-95 transition flex flex-col items-center justify-center">
             <span id="pauseIconText">⏸ Pause Angle</span>
           </button>
 
-          <!-- Instant Rapid-Fire Photo Button (Never disabled, 0ms click response!) -->
           <button id="btnSnapPhoto" onclick="insertPhotoIntoVideo()" class="w-16 h-16 rounded-full bg-white text-black shadow-2xl ring-4 ring-white/30 active:scale-90 transition flex flex-col items-center justify-center shrink-0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
@@ -195,7 +180,6 @@
             <span>✅ Finish & Save</span>
           </button>
         </div>
-
       </div>
     </div>
   </div>
@@ -207,17 +191,15 @@
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
           <h3 class="font-bold text-base text-white">Inspection Video Ready</h3>
-          <p class="text-[11px] text-emerald-400 font-medium">Full-Screen HD • Saved in browser memory</p>
+          <p class="text-[11px] text-emerald-400 font-medium">Share directly to WhatsApp, Bluetooth or Drive</p>
         </div>
         <button onclick="closeExportModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg">&times;</button>
       </div>
 
-      <!-- Instant Video Preview -->
       <div class="w-full h-56 bg-black rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
         <video id="finalPreviewPlayer" controls playsinline class="w-full h-full object-contain"></video>
       </div>
 
-      <!-- Custom File Name Input -->
       <div class="space-y-1.5">
         <label class="text-xs text-slate-300 font-medium">File Name</label>
         <div class="flex items-center bg-slate-950 border border-slate-700 focus-within:border-blue-500 rounded-xl px-3.5 py-3">
@@ -226,24 +208,21 @@
         </div>
       </div>
 
-      <!-- Download & Share Buttons -->
       <div class="grid grid-cols-2 gap-3 pt-1">
         <button onclick="downloadVideoFile()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-95 transition">
           <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           Download
         </button>
-        <button onclick="shareVideoFile()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition">
+        <button id="shareBtn" onclick="shareVideoFile()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-          Share App
+          <span id="shareBtnText">Share App</span>
         </button>
       </div>
 
-      <!-- Fresh New Inspection Trigger -->
       <button onclick="startNewInspection()" class="w-full py-2.5 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 text-blue-300 font-semibold text-xs text-center transition">
         + Start New Item Inspection (Fresh Session)
       </button>
 
-      <!-- Developer Credit -->
       <p class="text-center text-[10px] text-slate-500 pt-0.5">
         Developed by <span class="text-slate-400 font-medium">Sagar Herole</span>
       </p>
@@ -260,8 +239,8 @@
     let recordedChunks = [];
     let animFrameId = null;
 
-    let sessionState = "idle"; // 'idle' | 'recording' | 'paused'
-    let captureMode = "video"; // 'video' | 'photo_slideshow'
+    let sessionState = "idle";
+    let captureMode = "video";
     let frozenImage = null;
     let photoHoldTimer = null;
     let wasPausedBeforePhoto = false;
@@ -273,18 +252,19 @@
 
     let readyVideoBlob = null;
     let readyFileExt = ".mp4";
+    let readyCleanMime = "video/mp4";
 
     function getBestMime() {
       const candidates = [
-        { mime: "video/mp4;codecs=avc1,mp4a.40.2", ext: ".mp4" },
-        { mime: "video/mp4", ext: ".mp4" },
-        { mime: "video/webm;codecs=vp8,opus", ext: ".webm" },
-        { mime: "video/webm", ext: ".webm" }
+        { recMime: "video/mp4", cleanMime: "video/mp4", ext: ".mp4" },
+        { recMime: "video/mp4;codecs=avc1,mp4a.40.2", cleanMime: "video/mp4", ext: ".mp4" },
+        { recMime: "video/webm;codecs=vp8,opus", cleanMime: "video/webm", ext: ".webm" },
+        { recMime: "video/webm", cleanMime: "video/webm", ext: ".webm" }
       ];
       for (const c of candidates) {
-        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c.mime)) return c;
+        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c.recMime)) return c;
       }
-      return { mime: "video/webm", ext: ".webm" };
+      return { recMime: "video/webm", cleanMime: "video/webm", ext: ".webm" };
     }
 
     function resetSessionCompletely() {
@@ -487,6 +467,7 @@
       const canvas = document.getElementById("liveCanvas");
       const supported = getBestMime();
       readyFileExt = supported.ext;
+      readyCleanMime = supported.cleanMime;
 
       const canvasStream = canvas.captureStream(30);
       const audioTracks = mediaStream ? mediaStream.getAudioTracks() : [];
@@ -500,7 +481,7 @@
       document.getElementById("shotsStrip").innerHTML = "";
 
       mediaRecorder = new MediaRecorder(combinedStream, {
-        mimeType: supported.mime,
+        mimeType: supported.recMime,
         videoBitsPerSecond: 6_500_000
       });
 
@@ -539,7 +520,6 @@
       const pauseText = document.getElementById("pauseIconText");
 
       if (sessionState === "recording") {
-        // Clear any pending photo freeze if user pauses manually
         clearTimeout(photoHoldTimer);
         frozenImage = null;
         document.getElementById("photoFreezeBanner").classList.add("hidden");
@@ -561,7 +541,6 @@
       }
     }
 
-    // 5. INSTANT RAPID-FIRE PHOTO CAPTURE (0ms Delay, Never Blocks Next Click!)
     function insertPhotoIntoVideo() {
       if (!mediaRecorder || sessionState === "idle") return;
 
@@ -569,7 +548,6 @@
       const canvas = document.getElementById("liveCanvas");
       const banner = document.getElementById("photoFreezeBanner");
 
-      // Cancel previous photo hold timer if user clicks rapidly!
       if (photoHoldTimer) {
         clearTimeout(photoHoldTimer);
         photoHoldTimer = null;
@@ -577,18 +555,15 @@
         wasPausedBeforePhoto = (sessionState === "paused");
       }
 
-      // Snap directly from live rawVideo so rapid clicks capture the NEW live frame immediately
       const snapCanvas = document.createElement("canvas");
       snapCanvas.width = canvas.width;
       snapCanvas.height = canvas.height;
       const snapCtx = snapCanvas.getContext("2d", { alpha: false });
       drawCover(snapCtx, rawVid, rawVid.videoWidth, rawVid.videoHeight, snapCanvas.width, snapCanvas.height);
 
-      // Visual shutter flash effect
       canvas.style.opacity = "0.45";
       setTimeout(() => { canvas.style.opacity = "1"; }, 80);
 
-      // Freeze live video stream onto this snapshot immediately (synchronous canvas source)
       frozenImage = snapCanvas;
 
       const thumbUrl = snapCanvas.toDataURL("image/jpeg", 0.55);
@@ -602,7 +577,6 @@
         sessionState = "recording";
       }
 
-      // Hold photo inside video for 1.2s (snappy & fast), then seamlessly resume live video
       photoHoldTimer = setTimeout(() => {
         frozenImage = null;
         photoHoldTimer = null;
@@ -669,13 +643,16 @@
       await stoppedPromise;
 
       const supported = getBestMime();
-      readyVideoBlob = new Blob(recordedChunks, { type: supported.mime });
       readyFileExt = supported.ext;
+      readyCleanMime = supported.cleanMime;
+      // Store with CLEAN MIME type so Android Share Sheet accepts it without error!
+      readyVideoBlob = new Blob(recordedChunks, { type: readyCleanMime });
 
       await db.reports.put({
         id: "latest_inspection",
         blob: readyVideoBlob,
         ext: readyFileExt,
+        mime: readyCleanMime,
         createdAt: Date.now()
       });
 
@@ -725,23 +702,37 @@
       a.click();
     }
 
+    // FIXED NATIVE SHARE (Clean MIME Type -> Opens WhatsApp, Bluetooth, Drive, Gmail directly!)
     async function shareVideoFile() {
       if (!readyVideoBlob) return;
       const fileName = getCustomFileName();
-      const file = new File([readyVideoBlob], fileName, { type: readyVideoBlob.type });
+      // Strip any ';codecs=...' parameters so Android OS Share Sheet accepts the file
+      const cleanType = (readyCleanMime || "video/mp4").split(";")[0].trim();
+      const file = new File([readyVideoBlob], fileName, {
+        type: cleanType,
+        lastModified: Date.now()
+      });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
+      const shareBtnText = document.getElementById("shareBtnText");
+      shareBtnText.textContent = "Opening...";
+
+      try {
+        if (navigator.share) {
           await navigator.share({
             files: [file],
-            title: fileName,
-            text: "Inspection Video Report"
+            title: fileName
           });
-        } catch (err) {
-          if (err.name !== "AbortError") alert("Share cancelled or unavailable. Use Download.");
+        } else {
+          alert("Aapka browser direct app sharing support nahi karta. Kripya Download button use karein.");
         }
-      } else {
-        alert("Direct app share not supported in this browser. Tap Download.");
+      } catch (err) {
+        // User ne khud share sheet back karke band ki ho to alert mat dikhayein
+        if (err.name !== "AbortError") {
+          console.error("Share error:", err);
+          alert("Direct share failed (" + err.name + "). Kripya Download par tap karke Gallery se share karein.");
+        }
+      } finally {
+        shareBtnText.textContent = "Share App";
       }
     }
 
@@ -750,6 +741,7 @@
       if (saved && saved.blob) {
         readyVideoBlob = saved.blob;
         readyFileExt = saved.ext || ".mp4";
+        readyCleanMime = (saved.mime || saved.blob.type || "video/mp4").split(";")[0].trim();
         document.getElementById("savedReportBtn").classList.remove("hidden");
       }
     }
