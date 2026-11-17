@@ -3,716 +3,607 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>InspectPro — Field Quality & Audit Cam</title>
+  <title>InspectPro — Full-Screen Inspection Cam</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#090d16" />
+  <meta name="theme-color" content="#000000" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-  <!-- Ultra-Fast Pure JS MP4 Muxer (Zero Worker, Zero COOP/COEP) -->
-  <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
-    body {
-      font-family: 'Inter', sans-serif;
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
       height: 100dvh;
       overflow: hidden;
-      background-color: #090d16;
+      background-color: #000000;
+      font-family: 'Inter', sans-serif;
     }
     .mono { font-family: 'JetBrains Mono', monospace; }
-    .cam-grid {
-      background-image: 
-        linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
-      background-size: 33.33% 33.33%;
-    }
-    ::-webkit-scrollbar { height: 4px; }
-    ::-webkit-scrollbar-track { background: #0f172a; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    ::-webkit-scrollbar { height: 3px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 99px; }
   </style>
 </head>
-<body class="text-slate-100 flex flex-col justify-between select-none">
+<body class="text-white relative select-none">
 
-  <!-- TOP PROFESSIONAL APP BAR -->
-  <header class="px-4 py-3 bg-slate-900/95 border-b border-slate-800/90 flex justify-between items-center shrink-0 z-20">
-    <div class="flex items-center gap-2.5">
-      <div class="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-      </div>
-      <div>
-        <h1 class="font-bold text-sm tracking-tight text-white leading-none">InspectPro</h1>
-        <p class="text-[10px] text-slate-400 font-medium tracking-wider uppercase mt-0.5">Field Audit Studio</p>
-      </div>
-    </div>
+  <!-- FULL-SCREEN LIVE CAMERA / RECORDING CANVAS -->
+  <div id="stageContainer" class="fixed inset-0 w-full h-full bg-black flex items-center justify-center">
+    <!-- Hidden raw video source -->
+    <video id="rawVideo" autoplay playsinline muted class="hidden"></video>
+    <!-- Full-screen edge-to-edge canvas (Exact screen ratio, ZERO black padding!) -->
+    <canvas id="liveCanvas" class="hidden w-full h-full object-cover"></canvas>
+  </div>
 
-    <div class="flex items-center gap-2">
-      <button id="stopCamBtn" onclick="stopCamera()" class="hidden text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-        Standby
-      </button>
-      <button onclick="clearAllClips()" class="text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg border border-red-500/30 transition">
-        Reset
-      </button>
-    </div>
-  </header>
-
-  <!-- MAIN VIEWPORT -->
-  <main class="relative flex-1 bg-[#05080f] flex flex-col items-center justify-center overflow-hidden">
-    
-    <!-- STANDBY / LAUNCH CAMERA SCREEN -->
-    <div id="cameraPlaceholder" class="flex flex-col items-center justify-center p-6 text-center max-w-sm mx-auto space-y-5">
-      <div class="relative">
-        <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-400 shadow-2xl">
-          <svg class="w-9 h-9" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+  <!-- STANDBY LAUNCH SCREEN (Before Camera Starts) -->
+  <div id="standbyScreen" class="fixed inset-0 z-30 bg-slate-950 flex flex-col justify-between p-6">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
         </div>
-        <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-slate-800 border-2 border-[#05080f] flex items-center justify-center">
-          <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-        </span>
+        <div>
+          <h1 class="font-bold text-base tracking-tight text-white leading-none">InspectPro</h1>
+          <p class="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-1">Instant Video Studio</p>
+        </div>
       </div>
 
-      <div class="space-y-1.5">
-        <h2 class="text-base font-semibold text-white">Camera Ready for Inspection</h2>
+      <button id="savedReportBtn" onclick="openSavedReport()" class="hidden text-xs font-semibold bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 px-3 py-2 rounded-xl flex items-center gap-1.5">
+        <span>Last Video</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <div class="max-w-xs mx-auto text-center space-y-5 my-auto">
+      <div class="w-24 h-24 mx-auto rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-400 shadow-2xl">
+        <svg class="w-11 h-11" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </div>
+      <div class="space-y-2">
+        <h2 class="text-xl font-bold text-white">Full-Screen Inspection Cam</h2>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Main rear camera stays off to save battery until you start capturing angles.
+          Record multiple angles with Pause/Resume & insert live photos directly into one single full-screen video. Zero export wait time.
         </p>
       </div>
-
-      <button onclick="startCamera()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition text-white font-semibold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Activate Rear Camera
+      <button onclick="openFullCamera()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 transition text-white font-semibold text-sm py-4 rounded-2xl shadow-xl shadow-blue-600/30">
+        Start Inspection Camera
       </button>
     </div>
 
-    <!-- LIVE CAMERA STREAM -->
-    <video id="cameraPreview" autoplay playsinline muted class="hidden w-full h-full object-cover"></video>
-    <div id="viewfinderGrid" class="hidden absolute inset-0 cam-grid pointer-events-none"></div>
-
-    <!-- TOP HUD OVERLAY -->
-    <div id="cameraHudTop" class="hidden absolute top-3.5 inset-x-3.5 flex justify-between items-center pointer-events-none">
-      <div id="recBadge" class="invisible bg-red-600/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-lg">
-        <span class="w-2 h-2 bg-white rounded-full animate-ping"></span>
-        <span id="recTimer" class="mono">00:00</span>
-      </div>
-      <div class="bg-slate-950/75 backdrop-blur-md border border-white/10 text-slate-300 text-[10px] font-medium px-2.5 py-1 rounded-md mono uppercase tracking-wider">
-        REAR • HD
-      </div>
+    <div class="text-center text-[11px] text-slate-500">
+      Full-Screen Edge-to-Edge • Zero Black Borders
     </div>
+  </div>
 
-    <!-- BOTTOM CAMERA CONTROLS OVERLAY -->
-    <div id="cameraControls" class="hidden absolute bottom-4 inset-x-0 flex flex-col items-center gap-3.5 px-4 z-10">
-      <div id="modeSwitcher" class="bg-slate-950/85 backdrop-blur-md p-1 rounded-xl border border-white/15 flex text-xs font-semibold shadow-xl">
-        <button id="tabVideo" onclick="switchMode('video')" class="px-5 py-1.5 rounded-lg bg-blue-600 text-white transition flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          Video
-        </button>
-        <button id="tabPhoto" onclick="switchMode('photo')" class="px-5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          Photo
-        </button>
-      </div>
-
-      <div class="flex items-center justify-center">
-        <button id="videoActionBtn" onclick="toggleVideoRecording()" class="h-14 px-7 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold text-sm shadow-2xl ring-4 ring-white/20 active:scale-95 transition flex items-center gap-2.5">
-          <span class="w-3 h-3 rounded-full bg-white"></span>
-          <span>Record Clip</span>
-        </button>
-
-        <button id="photoActionBtn" onclick="capturePhoto()" class="hidden w-16 h-16 rounded-full bg-white hover:bg-slate-100 shadow-2xl ring-4 ring-white/30 active:scale-90 transition flex items-center justify-center">
-          <span class="w-12 h-12 rounded-full border-2 border-slate-900 flex items-center justify-center text-slate-900">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          </span>
-        </button>
-      </div>
-    </div>
-  </main>
-
-  <!-- BOTTOM TIMELINE & EXPORT BAR -->
-  <footer class="bg-slate-900 border-t border-slate-800 p-3.5 space-y-3 shrink-0 z-20">
-    <div class="flex justify-between items-center px-0.5">
+  <!-- ACTIVE CAMERA HUD OVERLAY (Floating on Top of Full-Screen Video) -->
+  <div id="cameraHUD" class="hidden fixed inset-0 z-20 flex flex-col justify-between pointer-events-none">
+    
+    <!-- Top Floating Bar -->
+    <div class="p-4 bg-gradient-to-b from-black/75 via-black/30 to-transparent flex justify-between items-center pointer-events-auto">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold text-slate-200">Inspection Timeline</span>
-        <span id="clipCountBadge" class="mono text-[11px] bg-slate-800 text-blue-400 border border-slate-700 px-2 py-0.5 rounded-md font-semibold">0</span>
-      </div>
-      <span class="text-[11px] text-emerald-400/90 flex items-center gap-1 font-medium">
-        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        Saved Locally
-      </span>
-    </div>
-
-    <div id="thumbnailList" class="flex gap-2.5 overflow-x-auto pb-1 min-h-[76px] items-center">
-      <div class="w-full py-4 border border-dashed border-slate-800 rounded-xl text-center">
-        <p class="text-slate-500 text-xs">Captured video clips & photos will appear here</p>
-      </div>
-    </div>
-
-    <button onclick="openExportModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-emerald-950/50 transition text-sm flex items-center justify-center gap-2">
-      <span>Compile & Export Video</span>
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-    </button>
-  </footer>
-
-  <!-- EXPORT & SHARE MODAL -->
-  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-end sm:items-center justify-center p-3">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl">
-      
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <div>
-          <h3 class="font-bold text-base text-white">Export Final Report</h3>
-          <p class="text-[11px] text-slate-400">Ultra-fast hardware MP4 compiler</p>
+        <div id="statusPill" class="bg-black/60 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-semibold">
+          <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="statusLabel" class="mono">READY</span>
         </div>
-        <button onclick="closeExportModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg leading-none">&times;</button>
-      </div>
-
-      <div class="space-y-1.5">
-        <label class="text-xs text-slate-300 font-medium">Report File Name</label>
-        <div class="flex items-center bg-slate-950 border border-slate-700 focus-within:border-blue-500 rounded-xl px-3.5 py-2.5 transition">
-          <input id="fileNameInput" type="text" placeholder="e.g. Unit_42_Inspection" class="bg-transparent text-sm text-white w-full outline-none font-medium" />
-          <span class="text-xs text-slate-400 mono ml-2">.mp4</span>
+        <div id="timerPill" class="hidden bg-red-600/90 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold mono">
+          00:00
         </div>
       </div>
 
-      <div class="space-y-1.5">
-        <label class="text-xs text-slate-300 font-medium">Output Resolution & Quality</label>
-        <select id="qualitySelect" class="w-full bg-slate-950 text-sm text-white px-3.5 py-3 rounded-xl border border-slate-700 outline-none focus:border-blue-500">
-          <option value="original">Original Quality (1080p Full HD)</option>
-          <option value="720p" selected>Standard HD (720p — Balanced Size)</option>
-          <option value="480p">Compact (480p — Instant WhatsApp/Email)</option>
-        </select>
-      </div>
-
-      <!-- Fast Progress Box -->
-      <div id="progressBox" class="hidden space-y-2 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-        <div class="flex justify-between text-xs font-medium">
-          <span id="statusText" class="text-blue-400">Compiling MP4...</span>
-          <span id="percentText" class="text-slate-300 mono">0%</span>
-        </div>
-        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-          <div id="progressBar" class="bg-emerald-500 h-full w-0 transition-all duration-100"></div>
-        </div>
-      </div>
-
-      <button id="generateBtn" onclick="generateFastMP4()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition text-sm">
-        Generate Final MP4
+      <button onclick="closeCameraToStandby()" class="bg-black/60 backdrop-blur-md border border-white/15 text-white/90 text-xs font-medium px-3.5 py-1.5 rounded-full active:scale-95">
+        Close
       </button>
+    </div>
 
-      <!-- Download & Native Share Buttons -->
-      <div id="postExportActions" class="hidden grid grid-cols-2 gap-3 pt-1">
-        <button onclick="downloadGeneratedVideo()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition">
-          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          Download
+    <!-- Center Freeze Notification Banner (Shown when Photo is inserted into video) -->
+    <div id="photoFreezeBanner" class="hidden mx-auto bg-amber-500 text-black font-bold text-xs px-4 py-2 rounded-full shadow-2xl tracking-wide uppercase">
+      📸 Photo Captured into Video (2.5s)
+    </div>
+
+    <!-- Bottom Floating Controls & Captured Shots Strip -->
+    <div class="p-4 pb-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent space-y-4 pointer-events-auto">
+      
+      <!-- Captured Angles Mini Strip -->
+      <div id="shotsStrip" class="flex gap-2 overflow-x-auto min-h-[54px] items-center px-1">
+        <span class="text-[11px] text-white/60 mx-auto">Tap Record to start capturing angles</span>
+      </div>
+
+      <!-- Mode Switcher (Only before recording starts) -->
+      <div id="modeBar" class="flex justify-center">
+        <div class="bg-black/70 backdrop-blur-md p-1 rounded-full border border-white/15 flex text-xs font-semibold">
+          <button id="modeVideoBtn" onclick="setCaptureMode('video')" class="px-5 py-1.5 rounded-full bg-blue-600 text-white transition">
+            Video + Photo Mix
+          </button>
+          <button id="modePhotoOnlyBtn" onclick="setCaptureMode('photo_slideshow')" class="px-5 py-1.5 rounded-full text-white/70 transition">
+            Photo-to-Video Only
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Action Buttons Row -->
+      <div class="flex items-center justify-center gap-5">
+        
+        <!-- 1. Idle State: Start Recording Button -->
+        <button id="btnStartRec" onclick="startInspectionSession()" class="h-16 px-8 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-2xl ring-4 ring-white/25 active:scale-95 transition flex items-center gap-2.5">
+          <span class="w-3.5 h-3.5 rounded-full bg-white"></span>
+          <span id="btnStartText">Start Recording</span>
         </button>
-        <button onclick="shareGeneratedVideo()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition shadow-lg">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-          Share File
-        </button>
+
+        <!-- 2. Active Recording State: Pause/Resume + Insert Photo + Finish -->
+        <div id="activeRecControls" class="hidden flex items-center justify-center gap-3 w-full max-w-sm">
+          <!-- Pause / Resume Angle Button -->
+          <button id="btnPauseResume" onclick="togglePauseResume()" class="flex-1 h-14 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-xl active:scale-95 transition flex flex-col items-center justify-center">
+            <span id="pauseIconText">⏸ Pause Angle</span>
+          </button>
+
+          <!-- Snap Photo into Video Button -->
+          <button id="btnSnapPhoto" onclick="insertPhotoIntoVideo()" class="w-16 h-16 rounded-full bg-white text-black shadow-2xl ring-4 ring-white/30 active:scale-90 transition flex flex-col items-center justify-center shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="text-[9px] font-bold uppercase mt-0.5">+Photo</span>
+          </button>
+
+          <!-- Finish & Save (0-Second Export!) -->
+          <button onclick="finishAndOpenExport()" class="flex-1 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xl active:scale-95 transition flex flex-col items-center justify-center">
+            <span>✅ Finish & Save</span>
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
 
+  <!-- INSTANT EXPORT & SHARE SHEET (0-Second Ready!) -->
+  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-end sm:items-center justify-center p-3">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-5 space-y-4 shadow-2xl">
+      
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-bold text-base text-white">Inspection Video Ready</h3>
+          <p class="text-[11px] text-emerald-400 font-medium">Compiled in 0.0s • Full-Screen Format</p>
+        </div>
+        <button onclick="closeExportModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-lg">&times;</button>
+      </div>
+
+      <!-- Instant Video Preview Player -->
+      <div class="w-full h-52 bg-black rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
+        <video id="finalPreviewPlayer" controls playsinline class="w-full h-full object-contain"></video>
+      </div>
+
+      <!-- Custom File Name Input -->
+      <div class="space-y-1.5">
+        <label class="text-xs text-slate-300 font-medium">Enter File Name</label>
+        <div class="flex items-center bg-slate-950 border border-slate-700 focus-within:border-blue-500 rounded-xl px-3.5 py-3">
+          <input id="fileNameInput" type="text" placeholder="e.g. Motor_Inspection_01" class="bg-transparent text-sm text-white w-full outline-none font-semibold" />
+          <span id="extBadge" class="text-xs text-slate-400 mono ml-2">.mp4</span>
+        </div>
+      </div>
+
+      <!-- Download & Native Share Buttons -->
+      <div class="grid grid-cols-2 gap-3 pt-1">
+        <button onclick="downloadVideoFile()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-95 transition">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download
+        </button>
+        <button onclick="shareVideoFile()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+          Share App
+        </button>
+      </div>
+
+      <button onclick="startNewInspection()" class="w-full text-xs text-slate-400 hover:text-white py-2 text-center">
+        + Start New Item Inspection
+      </button>
+    </div>
+  </div>
+
   <script>
-    // 1. Offline IndexedDB Storage
-    const db = new Dexie("InspectProDB");
-    db.version(1).stores({ clips: "++id, type, createdAt" });
+    // IndexedDB to persist last exported video across page refresh
+    const db = new Dexie("InspectProInstantDB");
+    db.version(1).stores({ reports: "id, createdAt" });
 
     let mediaStream = null;
     let mediaRecorder = null;
     let recordedChunks = [];
-    let isRecording = false;
-    let currentMode = "video";
+    let animFrameId = null;
+
+    let sessionState = "idle"; // 'idle' | 'recording' | 'paused'
+    let captureMode = "video"; // 'video' | 'photo_slideshow'
+    let frozenImage = null;    // Holds snapshot when user clicks +Photo
+    let shotCount = 0;
+
     let timerInterval = null;
-    let secondsElapsed = 0;
+    let activeSeconds = 0;
 
-    let finalVideoBlob = null;
-    let finalFileName = "Inspection_Report.mp4";
+    let readyVideoBlob = null;
+    let readyFileExt = ".mp4";
 
-    // 2. Camera Activation (Only on Click)
-    async function startCamera() {
+    // Detect best supported native format (MP4 on modern Chrome/Safari, WebM fallback)
+    function getBestMime() {
+      const candidates = [
+        { mime: "video/mp4;codecs=avc1,mp4a.40.2", ext: ".mp4" },
+        { mime: "video/mp4", ext: ".mp4" },
+        { mime: "video/webm;codecs=vp8,opus", ext: ".webm" },
+        { mime: "video/webm", ext: ".webm" }
+      ];
+      for (const c of candidates) {
+        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c.mime)) return c;
+      }
+      return { mime: "video/webm", ext: ".webm" };
+    }
+
+    // 1. Open Full-Screen Rear Camera (Exact Device Aspect Ratio = Zero Black Bars!)
+    async function openFullCamera() {
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
           audio: true
         });
-        const videoEl = document.getElementById("cameraPreview");
-        videoEl.srcObject = mediaStream;
-        videoEl.classList.remove("hidden");
 
-        document.getElementById("cameraPlaceholder").classList.add("hidden");
-        document.getElementById("viewfinderGrid").classList.remove("hidden");
-        document.getElementById("cameraHudTop").classList.remove("hidden");
-        document.getElementById("cameraControls").classList.remove("hidden");
-        document.getElementById("stopCamBtn").classList.remove("hidden");
+        const rawVid = document.getElementById("rawVideo");
+        rawVid.srcObject = mediaStream;
+        await rawVid.play();
+
+        // Match canvas aspect ratio strictly to the full-screen viewport
+        const canvas = document.getElementById("liveCanvas");
+        const screenRatio = window.innerWidth / window.innerHeight;
+        const targetHeight = 1280;
+        const targetWidth = Math.round((targetHeight * screenRatio) / 2) * 2; // Even width
+
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        canvas.classList.remove("hidden");
+
+        document.getElementById("standbyScreen").classList.add("hidden");
+        document.getElementById("cameraHUD").classList.remove("hidden");
+
+        startCanvasRenderLoop();
       } catch (err) {
-        alert("Unable to access rear camera. Please allow camera & microphone permissions.");
+        alert("Camera permission required. Please allow camera & mic access.");
       }
     }
 
-    function stopCamera() {
-      if (isRecording) return false;
+    // Continuous full-screen cover render loop (Draws either live camera or frozen photo)
+    function startCanvasRenderLoop() {
+      const rawVid = document.getElementById("rawVideo");
+      const canvas = document.getElementById("liveCanvas");
+      const ctx = canvas.getContext("2d", { alpha: false });
+
+      function draw() {
+        const cw = canvas.width;
+        const ch = canvas.height;
+
+        if (frozenImage) {
+          drawCover(ctx, frozenImage, frozenImage.width, frozenImage.height, cw, ch);
+        } else if (rawVid.readyState >= 2) {
+          drawCover(ctx, rawVid, rawVid.videoWidth, rawVid.videoHeight, cw, ch);
+        }
+        animFrameId = requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    // Center-crop cover fill so there are NEVER black borders
+    function drawCover(ctx, src, sw, sh, cw, ch) {
+      if (!sw || !sh) return;
+      const scale = Math.max(cw / sw, ch / sh);
+      const dw = sw * scale;
+      const dh = sh * scale;
+      ctx.drawImage(src, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    }
+
+    function stopAllCameraHardware() {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
       if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream.getTracks().forEach(t => t.stop());
         mediaStream = null;
       }
-      const videoEl = document.getElementById("cameraPreview");
-      videoEl.srcObject = null;
-      videoEl.classList.add("hidden");
-
-      document.getElementById("viewfinderGrid").classList.add("hidden");
-      document.getElementById("cameraHudTop").classList.add("hidden");
-      document.getElementById("cameraControls").classList.add("hidden");
-      document.getElementById("stopCamBtn").classList.add("hidden");
-      document.getElementById("cameraPlaceholder").classList.remove("hidden");
-      return true;
+      document.getElementById("liveCanvas").classList.add("hidden");
+      document.getElementById("cameraHUD").classList.add("hidden");
     }
 
-    // 3. Mode Toggle (Video / Photo)
-    function switchMode(mode) {
-      if (isRecording) return;
-      currentMode = mode;
+    function closeCameraToStandby() {
+      if (sessionState !== "idle") {
+        if (!confirm("Discard current active recording?")) return;
+        resetRecordingUI();
+      }
+      stopAllCameraHardware();
+      document.getElementById("standbyScreen").classList.remove("hidden");
+    }
 
-      const tabVideo = document.getElementById("tabVideo");
-      const tabPhoto = document.getElementById("tabPhoto");
-      const videoBtn = document.getElementById("videoActionBtn");
-      const photoBtn = document.getElementById("photoActionBtn");
+    // 2. Mode Switcher (Video+Photo Mix vs Photo-to-Video Only)
+    function setCaptureMode(mode) {
+      if (sessionState !== "idle") return;
+      captureMode = mode;
+      const b1 = document.getElementById("modeVideoBtn");
+      const b2 = document.getElementById("modePhotoOnlyBtn");
+      const startText = document.getElementById("btnStartText");
 
       if (mode === "video") {
-        tabVideo.className = "px-5 py-1.5 rounded-lg bg-blue-600 text-white transition flex items-center gap-1.5";
-        tabPhoto.className = "px-5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5";
-        videoBtn.classList.remove("hidden");
-        photoBtn.classList.add("hidden");
+        b1.className = "px-5 py-1.5 rounded-full bg-blue-600 text-white transition";
+        b2.className = "px-5 py-1.5 rounded-full text-white/70 transition";
+        startText.textContent = "Start Recording";
       } else {
-        tabPhoto.className = "px-5 py-1.5 rounded-lg bg-blue-600 text-white transition flex items-center gap-1.5";
-        tabVideo.className = "px-5 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5";
-        photoBtn.classList.remove("hidden");
-        videoBtn.classList.add("hidden");
+        b2.className = "px-5 py-1.5 rounded-full bg-blue-600 text-white transition";
+        b1.className = "px-5 py-1.5 rounded-full text-white/70 transition";
+        startText.textContent = "Start Photo-Video";
       }
     }
 
-    // 4. Video Recording (Start / Save)
-    function toggleVideoRecording() {
-      const btn = document.getElementById("videoActionBtn");
-      const badge = document.getElementById("recBadge");
-      const switcher = document.getElementById("modeSwitcher");
+    // 3. Start Single-Stream Inspection Recording
+    function startInspectionSession() {
+      const canvas = document.getElementById("liveCanvas");
+      const supported = getBestMime();
+      readyFileExt = supported.ext;
 
-      if (!isRecording) {
-        recordedChunks = [];
-        const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-          ? "video/webm;codecs=vp8,opus"
-          : MediaRecorder.isTypeSupported("video/webm")
-          ? "video/webm"
-          : "video/mp4";
+      // Combine full-screen canvas video + live mic audio into ONE stream
+      const canvasStream = canvas.captureStream(30);
+      const audioTracks = mediaStream ? mediaStream.getAudioTracks() : [];
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioTracks
+      ]);
 
-        mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
-        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(combinedStream, {
+        mimeType: supported.mime,
+        videoBitsPerSecond: 4_500_000
+      });
 
-        mediaRecorder.onstop = async () => {
-          const videoBlob = new Blob(recordedChunks, { type: mimeType });
-          const thumbUrl = captureVideoFrame(320, 180, 0.65);
-          await db.clips.add({ type: "video", blob: videoBlob, thumbUrl, createdAt: Date.now() });
-          renderThumbnails();
-        };
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+      };
 
-        mediaRecorder.start(200);
-        isRecording = true;
-        startTimer();
+      mediaRecorder.start(250);
+      sessionState = "recording";
+      shotCount = 0;
+      document.getElementById("shotsStrip").innerHTML = "";
 
-        btn.innerHTML = `<span class="w-3 h-3 bg-white rounded-sm"></span><span>Save Clip</span>`;
-        btn.classList.replace("bg-red-600", "bg-emerald-600");
-        btn.classList.replace("hover:bg-red-500", "hover:bg-emerald-500");
-        badge.classList.remove("invisible");
-        switcher.classList.add("opacity-40", "pointer-events-none");
+      // If Photo-to-Video mode, pause immediately after starting so user just clicks +Photo for each angle
+      if (captureMode === "photo_slideshow") {
+        setTimeout(() => {
+          if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.pause();
+            sessionState = "paused";
+            updateHUDState("PAUSED (PHOTO MODE)", "bg-amber-400");
+            document.getElementById("btnPauseResume").classList.add("hidden");
+          }
+        }, 150);
       } else {
-        mediaRecorder.stop();
-        isRecording = false;
-        stopTimer();
+        addShotThumbnail("VID #1");
+        updateHUDState("RECORDING", "bg-red-500 animate-ping");
+        document.getElementById("btnPauseResume").classList.remove("hidden");
+      }
 
-        btn.innerHTML = `<span class="w-3 h-3 rounded-full bg-white"></span><span>Record Clip</span>`;
-        btn.classList.replace("bg-emerald-600", "bg-red-600");
-        btn.classList.replace("hover:bg-emerald-500", "hover:bg-red-500");
-        badge.classList.add("invisible");
-        switcher.classList.remove("opacity-40", "pointer-events-none");
+      document.getElementById("modeBar").classList.add("hidden");
+      document.getElementById("btnStartRec").classList.add("hidden");
+      document.getElementById("activeRecControls").classList.remove("hidden");
+      document.getElementById("timerPill").classList.remove("hidden");
+      startTimer();
+    }
+
+    // 4. Pause / Resume Between Angles (Zero Gap!)
+    function togglePauseResume() {
+      if (!mediaRecorder) return;
+      const pauseBtn = document.getElementById("btnPauseResume");
+      const pauseText = document.getElementById("pauseIconText");
+
+      if (sessionState === "recording") {
+        mediaRecorder.pause();
+        sessionState = "paused";
+        pauseBtn.classList.replace("bg-amber-500", "bg-blue-600");
+        pauseBtn.classList.replace("text-black", "text-white");
+        pauseText.textContent = "▶ Resume Angle";
+        updateHUDState("PAUSED", "bg-amber-400");
+      } else if (sessionState === "paused") {
+        mediaRecorder.resume();
+        sessionState = "recording";
+        pauseBtn.classList.replace("bg-blue-600", "bg-amber-500");
+        pauseBtn.classList.replace("text-white", "text-black");
+        pauseText.textContent = "⏸ Pause Angle";
+        addShotThumbnail(`VID #${shotCount + 1}`);
+        updateHUDState("RECORDING", "bg-red-500 animate-ping");
       }
     }
 
-    // 5. Instant Photo Capture
-    async function capturePhoto() {
-      const video = document.getElementById("cameraPreview");
-      if (!video.videoWidth) return;
+    // 5. Snap Photo Directly Into Active Video Stream (2.5 Seconds Hold!)
+    async function insertPhotoIntoVideo() {
+      if (!mediaRecorder || sessionState === "idle") return;
 
-      video.classList.add("opacity-40");
-      setTimeout(() => video.classList.remove("opacity-40"), 100);
+      const canvas = document.getElementById("liveCanvas");
+      const banner = document.getElementById("photoFreezeBanner");
+      const snapBtn = document.getElementById("btnSnapPhoto");
 
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0);
+      // Capture current full-screen frame as frozen image
+      const snapDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      const img = new Image();
+      img.src = snapDataUrl;
+      await new Promise(r => img.onload = r);
 
-      const thumbUrl = canvas.toDataURL("image/jpeg", 0.55);
-      canvas.toBlob(async (blob) => {
-        await db.clips.add({ type: "photo", blob, thumbUrl, createdAt: Date.now() });
-        renderThumbnails();
-      }, "image/jpeg", 0.92);
+      frozenImage = img;
+      addShotThumbnail(`IMG #${shotCount + 1}`, snapDataUrl);
+      banner.classList.remove("hidden");
+      snapBtn.disabled = true;
+
+      const wasPaused = (sessionState === "paused");
+      if (wasPaused) {
+        mediaRecorder.resume();
+        sessionState = "recording";
+        updateHUDState("CAPTURING PHOTO...", "bg-amber-400 animate-ping");
+      }
+
+      // Hold photo inside video for 2.5 seconds
+      setTimeout(() => {
+        frozenImage = null;
+        banner.classList.add("hidden");
+        snapBtn.disabled = false;
+
+        if (wasPaused && mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.pause();
+          sessionState = "paused";
+          updateHUDState(captureMode === "photo_slideshow" ? "PAUSED (PHOTO MODE)" : "PAUSED", "bg-amber-400");
+        }
+      }, 2500);
     }
 
-    function captureVideoFrame(w, h, q) {
-      const video = document.getElementById("cameraPreview");
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext("2d").drawImage(video, 0, 0, w, h);
-      return canvas.toDataURL("image/jpeg", q);
+    function addShotThumbnail(label, customThumb) {
+      shotCount++;
+      const canvas = document.getElementById("liveCanvas");
+      const thumb = customThumb || canvas.toDataURL("image/jpeg", 0.5);
+      const strip = document.getElementById("shotsStrip");
+
+      const item = document.createElement("div");
+      item.className = "relative flex-shrink-0 w-12 h-16 rounded-lg overflow-hidden border border-white/30 bg-black shadow";
+      item.innerHTML = `
+        <img src="${thumb}" class="w-full h-full object-cover" />
+        <span class="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] font-bold text-center py-0.5 mono">${label}</span>
+      `;
+      strip.appendChild(item);
+      strip.scrollLeft = strip.scrollWidth;
+    }
+
+    function updateHUDState(text, dotClass) {
+      document.getElementById("statusLabel").textContent = text;
+      document.getElementById("statusDot").className = `w-2 h-2 rounded-full ${dotClass}`;
     }
 
     function startTimer() {
-      secondsElapsed = 0;
-      document.getElementById("recTimer").textContent = "00:00";
+      activeSeconds = 0;
+      document.getElementById("timerPill").textContent = "00:00";
       timerInterval = setInterval(() => {
-        secondsElapsed++;
-        const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, "0");
-        const secs = String(secondsElapsed % 60).padStart(2, "0");
-        document.getElementById("recTimer").textContent = `${mins}:${secs}`;
+        if (sessionState === "recording") {
+          activeSeconds++;
+          const m = String(Math.floor(activeSeconds / 60)).padStart(2, "0");
+          const s = String(activeSeconds % 60).padStart(2, "0");
+          document.getElementById("timerPill").textContent = `${m}:${s}`;
+        }
       }, 1000);
     }
 
-    function stopTimer() { clearInterval(timerInterval); }
+    // 6. Finish & Open Export Sheet in 0.0 Seconds (No Waiting!)
+    async function finishAndOpenExport() {
+      if (!mediaRecorder || sessionState === "idle") return;
 
-    // 6. Render Timeline Thumbnails
-    async function renderThumbnails() {
-      const clips = await db.clips.toArray();
-      const container = document.getElementById("thumbnailList");
-      document.getElementById("clipCountBadge").textContent = clips.length;
+      clearInterval(timerInterval);
+      const stoppedPromise = new Promise(resolve => {
+        mediaRecorder.onstop = resolve;
+      });
 
-      if (clips.length === 0) {
-        container.innerHTML = `
-          <div class="w-full py-4 border border-dashed border-slate-800 rounded-xl text-center">
-            <p class="text-slate-500 text-xs">Captured video clips & photos will appear here</p>
-          </div>`;
-        return;
-      }
+      if (mediaRecorder.state === "paused") mediaRecorder.resume();
+      mediaRecorder.stop();
+      await stoppedPromise;
 
-      container.innerHTML = clips.map((clip, idx) => `
-        <div class="relative flex-shrink-0 w-24 h-16 rounded-xl overflow-hidden border border-slate-700 bg-black shadow-md group">
-          <img src="${clip.thumbUrl}" class="w-full h-full object-cover" />
-          <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-1.5 py-1 flex items-center justify-between">
-            <span class="mono text-[9px] font-semibold text-white tracking-tight">
-              #${String(idx + 1).padStart(2, "0")} ${clip.type === "video" ? "VID" : "IMG"}
-            </span>
-          </div>
-          <button onclick="deleteClip(${clip.id})" class="absolute top-1 right-1 bg-slate-950/80 hover:bg-red-600 text-white text-xs w-5 h-5 rounded-md flex items-center justify-center border border-white/15 transition">×</button>
-        </div>
-      `).join("");
-      container.scrollLeft = container.scrollWidth;
+      const supported = getBestMime();
+      readyVideoBlob = new Blob(recordedChunks, { type: supported.mime });
+      readyFileExt = supported.ext;
+
+      // Save to IndexedDB so even if user refreshes page, video is NOT lost!
+      await db.reports.put({
+        id: "latest_inspection",
+        blob: readyVideoBlob,
+        ext: readyFileExt,
+        createdAt: Date.now()
+      });
+
+      resetRecordingUI();
+      stopAllCameraHardware();
+      showExportSheet();
     }
 
-    async function deleteClip(id) {
-      await db.clips.delete(id);
-      renderThumbnails();
+    function resetRecordingUI() {
+      sessionState = "idle";
+      frozenImage = null;
+      document.getElementById("modeBar").classList.remove("hidden");
+      document.getElementById("btnStartRec").classList.remove("hidden");
+      document.getElementById("activeRecControls").classList.add("hidden");
+      document.getElementById("timerPill").classList.add("hidden");
+      document.getElementById("photoFreezeBanner").classList.add("hidden");
+      updateHUDState("READY", "bg-emerald-400");
     }
 
-    async function clearAllClips() {
-      if (isRecording) return alert("Please save the active recording first.");
-      if (confirm("Clear all captured clips and photos from this session?")) {
-        await db.clips.clear();
-        renderThumbnails();
-      }
-    }
-
-    // 7. Export Modal (Auto Stops Camera)
-    async function openExportModal() {
-      if (isRecording) return alert("Please save the active recording before exporting.");
-      const clips = await db.clips.toArray();
-      if (clips.length === 0) return alert("Capture at least 1 video clip or photo before exporting.");
-
-      stopCamera();
-
+    function showExportSheet() {
+      if (!readyVideoBlob) return;
       const defaultName = `Inspection_${new Date().toISOString().slice(0, 10)}`;
       document.getElementById("fileNameInput").value = defaultName;
-      document.getElementById("postExportActions").classList.add("hidden");
-      document.getElementById("progressBox").classList.add("hidden");
-      document.getElementById("generateBtn").classList.remove("hidden");
+      document.getElementById("extBadge").textContent = readyFileExt;
+
+      const player = document.getElementById("finalPreviewPlayer");
+      player.src = URL.createObjectURL(readyVideoBlob);
+
       document.getElementById("exportModal").classList.remove("hidden");
     }
 
     function closeExportModal() {
       document.getElementById("exportModal").classList.add("hidden");
+      document.getElementById("standbyScreen").classList.remove("hidden");
+      checkSavedReport();
     }
 
-    function drawFit(ctx, source, sw, sh, cw, ch) {
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, cw, ch);
-      const scale = Math.min(cw / sw, ch / sh);
-      const dw = sw * scale;
-      const dh = sh * scale;
-      ctx.drawImage(source, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    function startNewInspection() {
+      document.getElementById("exportModal").classList.add("hidden");
+      openFullCamera();
     }
 
-    // 8. ULTRA-FAST HARDWARE WEBCODECS + MP4-MUXER ENGINE (~1-2 Seconds!)
-    async function generateFastMP4() {
-      const clips = await db.clips.toArray();
-      const rawName = document.getElementById("fileNameInput").value.trim() || "Inspection_Report";
-      finalFileName = rawName.replace(/[^a-zA-Z0-9_-]/g, "_") + ".mp4";
-
-      const quality = document.getElementById("qualitySelect").value;
-      const generateBtn = document.getElementById("generateBtn");
-      const progressBox = document.getElementById("progressBox");
-      const statusText = document.getElementById("statusText");
-      const percentText = document.getElementById("percentText");
-      const progressBar = document.getElementById("progressBar");
-
-      // Even dimensions required by H.264 encoder
-      let width = 1280, height = 720, bitrate = 3_000_000;
-      if (quality === "original") { width = 1920; height = 1080; bitrate = 6_000_000; }
-      else if (quality === "480p") { width = 854; height = 480; bitrate = 1_500_000; }
-
-      generateBtn.disabled = true;
-      generateBtn.textContent = "Fast Compiling...";
-      progressBox.classList.remove("hidden");
-      percentText.textContent = "5%";
-      progressBar.style.width = "5%";
-      statusText.textContent = "Preparing hardware encoder...";
-
-      const startTimeMs = performance.now();
-
-      try {
-        if (typeof VideoEncoder === "undefined") {
-          throw new Error("WebCodecs not supported on this browser. Please update Chrome/Safari.");
-        }
-
-        const fps = 30;
-        const frameDurationUs = Math.round(1_000_000 / fps);
-        const sampleRate = 44100;
-
-        // Decode audio tracks from all video clips first (fast native decodeAudioData)
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
-        const clipAudioBuffers = [];
-        let hasAnyAudio = false;
-
-        for (let i = 0; i < clips.length; i++) {
-          if (clips[i].type === "video") {
-            try {
-              const arrBuf = await clips[i].blob.arrayBuffer();
-              const decoded = await audioCtx.decodeAudioData(arrBuf);
-              clipAudioBuffers.push(decoded);
-              hasAnyAudio = true;
-            } catch (e) {
-              clipAudioBuffers.push(null);
-            }
-          } else {
-            clipAudioBuffers.push(null);
-          }
-        }
-
-        // Initialize MP4 Muxer
-        const muxerOptions = {
-          target: new Mp4Muxer.ArrayBufferTarget(),
-          video: { codec: "avc", width, height },
-          fastStart: "in-memory"
-        };
-        if (hasAnyAudio) {
-          muxerOptions.audio = { codec: "aac", numberOfChannels: 1, sampleRate };
-        }
-
-        const muxer = new Mp4Muxer.Muxer(muxerOptions);
-
-        // Hardware H.264 VideoEncoder
-        const videoEncoder = new VideoEncoder({
-          output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-          error: (e) => console.error("VideoEncoder error:", e)
-        });
-
-        await videoEncoder.configure({
-          codec: "avc1.4d002a", // H.264 Main Profile
-          width,
-          height,
-          bitrate,
-          framerate: fps
-        });
-
-        // Hardware AAC AudioEncoder (if clips have audio)
-        let audioEncoder = null;
-        if (hasAnyAudio) {
-          audioEncoder = new AudioEncoder({
-            output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-            error: (e) => console.error("AudioEncoder error:", e)
-          });
-          await audioEncoder.configure({
-            codec: "mp4a.40.2",
-            numberOfChannels: 1,
-            sampleRate,
-            bitrate: 96_000
-          });
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d", { alpha: false });
-
-        let currentTimestampUs = 0;
-        let frameCounter = 0;
-
-        for (let i = 0; i < clips.length; i++) {
-          const clip = clips[i];
-          const pct = Math.round(((i + 0.2) / clips.length) * 90);
-          percentText.textContent = `${pct}%`;
-          progressBar.style.width = `${pct}%`;
-          statusText.textContent = `Merging item ${i + 1} of ${clips.length}...`;
-
-          let clipDurationUs = 0;
-
-          if (clip.type === "photo") {
-            // Render photo for 2.5 seconds (75 frames) in a few milliseconds!
-            const imgBitmap = await createImageBitmap(clip.blob);
-            drawFit(ctx, imgBitmap, imgBitmap.width, imgBitmap.height, width, height);
-            imgBitmap.close();
-
-            const photoFrames = Math.round(2.5 * fps);
-            for (let f = 0; f < photoFrames; f++) {
-              const vf = new VideoFrame(canvas, {
-                timestamp: currentTimestampUs + f * frameDurationUs,
-                duration: frameDurationUs
-              });
-              videoEncoder.encode(vf, { keyFrame: f === 0 });
-              vf.close();
-              frameCounter++;
-              if (videoEncoder.encodeQueueSize > 10) await videoEncoder.flush();
-            }
-            clipDurationUs = photoFrames * frameDurationUs;
-
-          } else {
-            // Fast seek-and-encode video frames (much faster than real-time playback)
-            const vid = document.createElement("video");
-            const vidUrl = URL.createObjectURL(clip.blob);
-            vid.src = vidUrl;
-            vid.muted = true;
-            vid.playsInline = true;
-
-            await new Promise((res) => {
-              vid.onloadedmetadata = async () => {
-                if (vid.duration === Infinity) {
-                  vid.currentTime = 1e9;
-                  await new Promise(r => vid.onseeked = r);
-                  vid.currentTime = 0;
-                  await new Promise(r => vid.onseeked = r);
-                }
-                res();
-              };
-            });
-
-            const durationSec = Math.max(0.2, vid.duration || 1);
-            const totalFrames = Math.max(1, Math.floor(durationSec * fps));
-
-            for (let f = 0; f < totalFrames; f++) {
-              const targetTime = Math.min(durationSec - 0.01, f / fps);
-              vid.currentTime = targetTime;
-              await new Promise((r) => { vid.onseeked = r; });
-
-              drawFit(ctx, vid, vid.videoWidth || width, vid.videoHeight || height, width, height);
-
-              const vf = new VideoFrame(canvas, {
-                timestamp: currentTimestampUs + f * frameDurationUs,
-                duration: frameDurationUs
-              });
-              videoEncoder.encode(vf, { keyFrame: frameCounter % 60 === 0 });
-              vf.close();
-              frameCounter++;
-
-              if (videoEncoder.encodeQueueSize > 8) await videoEncoder.flush();
-            }
-
-            clipDurationUs = totalFrames * frameDurationUs;
-            URL.revokeObjectURL(vidUrl);
-          }
-
-          // Encode matching audio segment (or silence for photos)
-          if (hasAnyAudio && audioEncoder) {
-            const numSamples = Math.round((clipDurationUs / 1_000_000) * sampleRate);
-            const pcmData = new Float32Array(numSamples);
-
-            if (clipAudioBuffers[i]) {
-              const ch0 = clipAudioBuffers[i].getChannelData(0);
-              const copyLen = Math.min(numSamples, ch0.length);
-              pcmData.set(ch0.subarray(0, copyLen));
-            }
-
-            const audioData = new AudioData({
-              format: "f32",
-              sampleRate,
-              numberOfFrames: numSamples,
-              numberOfChannels: 1,
-              timestamp: currentTimestampUs,
-              data: pcmData
-            });
-            audioEncoder.encode(audioData);
-            audioData.close();
-          }
-
-          currentTimestampUs += clipDurationUs;
-        }
-
-        await videoEncoder.flush();
-        videoEncoder.close();
-        if (audioEncoder) {
-          await audioEncoder.flush();
-          audioEncoder.close();
-        }
-        await audioCtx.close();
-
-        muxer.finalize();
-        finalVideoBlob = new Blob([muxer.target.buffer], { type: "video/mp4" });
-
-        const elapsedSec = ((performance.now() - startTimeMs) / 1000).toFixed(1);
-        statusText.textContent = `Compiled in ${elapsedSec}s — Ready!`;
-        percentText.textContent = "100%";
-        progressBar.style.width = "100%";
-
-        generateBtn.classList.add("hidden");
-        document.getElementById("postExportActions").classList.remove("hidden");
-      } catch (err) {
-        console.error("Fast MP4 Error:", err);
-        statusText.textContent = `Error: ${err.message}`;
-      } finally {
-        generateBtn.disabled = false;
-        generateBtn.textContent = "Generate Final MP4";
-      }
+    // 7. Download & Share Anywhere
+    function getCustomFileName() {
+      const raw = document.getElementById("fileNameInput").value.trim() || "Inspection_Video";
+      return raw.replace(/[^a-zA-Z0-9_-]/g, "_") + readyFileExt;
     }
 
-    // 9. Download & Share
-    function downloadGeneratedVideo() {
-      if (!finalVideoBlob) return;
-      const url = URL.createObjectURL(finalVideoBlob);
+    function downloadVideoFile() {
+      if (!readyVideoBlob) return;
+      const url = URL.createObjectURL(readyVideoBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = finalFileName;
+      a.download = getCustomFileName();
       a.click();
     }
 
-    async function shareGeneratedVideo() {
-      if (!finalVideoBlob) return;
-      const file = new File([finalVideoBlob], finalFileName, { type: "video/mp4" });
+    async function shareVideoFile() {
+      if (!readyVideoBlob) return;
+      const fileName = getCustomFileName();
+      const file = new File([readyVideoBlob], fileName, { type: readyVideoBlob.type });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
             files: [file],
-            title: finalFileName,
+            title: fileName,
             text: "Inspection Video Report"
           });
         } catch (err) {
-          if (err.name !== "AbortError") alert("Could not open share sheet. Use Download instead.");
+          if (err.name !== "AbortError") alert("Share cancelled or unavailable. Use Download.");
         }
       } else {
-        alert("Direct app sharing is not supported in this browser. Tap Download to save the MP4.");
+        alert("Direct app share not supported in this browser. Tap Download.");
       }
     }
 
-    window.onload = () => renderThumbnails();
+    // Restore last video if page was refreshed
+    async function checkSavedReport() {
+      const saved = await db.reports.get("latest_inspection");
+      if (saved && saved.blob) {
+        readyVideoBlob = saved.blob;
+        readyFileExt = saved.ext || ".mp4";
+        document.getElementById("savedReportBtn").classList.remove("hidden");
+      }
+    }
+
+    function openSavedReport() {
+      showExportSheet();
+    }
+
+    window.onload = () => checkSavedReport();
   </script>
 </body>
 </html>
